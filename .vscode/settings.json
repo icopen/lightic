@@ -1,0 +1,13 @@
+{
+    "mochaExplorer.files": "test/**/*.ts",
+    "mochaExplorer.require": "ts-node/register",
+    "mochaExplorer.env": { "DEBUG": "lightic*" },
+    "cSpell.words": [
+        "dfinity",
+        "ecid",
+        "icrc",
+        "lightic",
+        "Prin",
+        "webassemblyjs"
+    ]
+}

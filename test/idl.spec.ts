@@ -3,7 +3,7 @@ import { IDL } from '@dfinity/candid'
 import fs from 'fs'
 import { TestContext } from '../src'
 import { buildIdl } from '../src/idl_builder'
-import { parse_candid } from '../src/wasm_tools/pkg/candid_util'
+import { parse_candid } from '../src/wasm_tools/pkg/wasm_tools'
 
 describe('IDL Build', function () {
   it('from motoko', async function () {

@@ -9,7 +9,7 @@
     "eslint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
     "prettier": "prettier \"src/**/*.{js,md,json,ts}\"",
     "test": "DEBUG=lightic* mocha --recursive \"test/**/*.ts\"",
-    "build": "tsc --build .",
+    "build": "tsc --build ./src",
     "buildWasmTools": "cd ./src/wasm_tools && yarn build && cd ../../",
     "copyWasmTools": "[ -d ./lib/esm/wasm_tools ] || mkdir ./lib/esm/wasm_tools && cp -r ./src/wasm_tools/pkg ./lib/esm/wasm_tools/pkg",
     "prePublish": "yarn buildWasmTools && yarn build && yarn copyWasmTools"
