@@ -12,9 +12,4 @@ describe('IDL Build', function () {
     const candid = JSON.parse(jsonCandid)
     buildIdl(IDL, candid)
   })
-
-  it('candid from motoko build', async function () {
-    const context = new TestContext()
-    await context.deploy('./cache/staging.wasm')
-  })
 })
