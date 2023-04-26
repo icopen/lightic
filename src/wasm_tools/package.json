@@ -1,0 +1,20 @@
+{
+  "name": "@lightic/candid_util",
+  "version": "0.0.1",
+  "description": "",
+  "main": "pkg/candid_util.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "wasm-pack build --target nodejs"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+  },
+  "files": [
+    "pkg/candid_util_bg.wasm",
+    "pkg/candid_util.js",
+    "pkg/candid_util.d.ts"
+  ],
+  "types": "pkg/candid_util.d.ts"
+}
