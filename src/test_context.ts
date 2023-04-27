@@ -1,16 +1,23 @@
 import { type Principal } from '@dfinity/principal'
 import { MockAgent } from './mock_agent'
 import { loadWasm } from './instrumentation'
-import fs from 'fs'
 import { ReplicaContext } from './replica_context'
-import { type Canister } from './canister'
-
-export { LedgerHelper } from './ledger_helper'
+import { Canister } from './canister'
+import fs from 'fs'
 
 export interface DeployOptions {
   initArgs?: any
   candid?: string
   id?: string
+  caller?: Principal
+}
+
+export function getGlobalTestContext(): TestContext {
+  if (global.testContext === undefined) {
+    global.testContext = new TestContext();
+  }
+
+  return global.testContext as TestContext
 }
 
 export class TestContext {
@@ -47,7 +54,12 @@ export class TestContext {
       this.compiled[filename] = module
     }
 
-    const result = await this.replica.install_canister(module, opts?.initArgs, opts?.candid, opts?.id)
+    const result = await this.replica.install_canister(module, {
+      initArgs: opts?.initArgs, 
+      candid: opts?.candid,
+      id: opts?.id,
+      caller: opts?.caller
+    })
 
     return result
   }

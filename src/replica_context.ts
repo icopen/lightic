@@ -1,10 +1,19 @@
 import { Principal } from '@dfinity/principal'
-import { Canister } from './canister'
+import { WasmCanister } from './wasm_canister'
 
 import debug from 'debug'
-import { CallSource, CallStatus, CallType, Message } from './call_context'
+import { CallSource, CallStatus, CallType, Message, RejectionCode } from './call_context'
 import { u64IntoCanisterId } from './utils'
+import { ManagementCanister } from './management_canister'
+import { Canister } from './canister'
 const log = debug('lightic:replica')
+
+export interface InstallCanisterArgs {
+  initArgs: any,
+  candid: string | undefined,
+  id: string | undefined,
+  caller: Principal | undefined
+}
 
 export class ReplicaContext {
   private last_id: bigint
@@ -18,40 +27,38 @@ export class ReplicaContext {
     this.last_id = 0n
     this.messages = {}
 
+    this.canisters['aaaaa-aa'] = new ManagementCanister(this)
+
     // this.msg_log = []
   }
-
-  // // Processes all pending messages
-  // async process_pending_messages (): Promise<void> {
-  //   const pending = Object.values(this.messages).filter((x) => x.status === CallStatus.New)
-
-  //   for (let msg in pending) {
-
-  //   }
-
-  //   throw new Error('Method not implemented.')
-  // }
 
   // Processes messages
   // Todo: add correct replica errors
   private process_message (msg: Message): ArrayBuffer | null {
     const canister = this.canisters[msg.target.toString()]
-    canister.process_message(msg)
 
-    // Process any waiting messages, before returning, ie all inter-canister calls
-    this.process_messages()
+    if (canister !== undefined)
+    {
+      canister.process_message(msg)
+
+      // Process any waiting messages, before returning, ie all inter-canister calls
+      this.process_messages()
+    } else {
+      msg.status = CallStatus.Error
+      msg.rejectionCode = RejectionCode.DestinationInvalid
+      msg.rejectionMessage = new TextEncoder().encode("Canister not found: "+msg.target.toString())
+    }    
 
     return msg.result
   }
 
   // Store message for processing
   store_message (msg: Message): void {
-    const canister = this.canisters[msg.target.toString()]
+    // const canister = this.canisters[msg.target.toString()]
 
-    if (canister === undefined) {
-      throw new Error('Canister not found! ' + msg.target.toString())
-    }
-
+    // if (canister === undefined) {
+    //   throw new Error('Canister not found! ' + msg.target.toString())
+    // }
     msg.id = (Object.keys(this.messages).length + 1).toString()
     this.messages[msg.id] = msg
   }
@@ -70,6 +77,24 @@ export class ReplicaContext {
             type: CallType.ReplyCallback,
             target: msg.sender,
             sender: msg.target,
+            result: msg.result,
+            args_raw: msg.result,
+            replyFun: msg.replyFun,
+            replyEnv: msg.replyEnv,
+            rejectFun: msg.rejectFun,
+            rejectEnv: msg.rejectEnv,
+            replyContext: msg.replyContext
+          })
+          this.store_message(reply)
+        }
+        if (msg.status === CallStatus.Error) {
+          const reply: Message = new Message({
+            source: CallSource.InterCanister,
+            type: CallType.RejectCallback,
+            rejectionCode: msg.rejectionCode,
+            target: msg.sender,
+            sender: msg.target,
+
             result: msg.result,
             args_raw: msg.result,
             replyFun: msg.replyFun,
@@ -101,27 +126,25 @@ export class ReplicaContext {
   // Installs code as a canister in replica, assigns ID in similar fashion as replica
   async install_canister (
     code: WebAssembly.Module,
-    initArgs: any,
-    candid?: string,
-    id?: string
+    params: InstallCanisterArgs
   ): Promise<Canister> {
     let idPrin: Principal | undefined
 
-    if (id === undefined) {
+    if (params.id === undefined) {
       idPrin = this.get_canister_id()
     } else {
-      if (this.canisters[id] !== undefined) {
-        throw new Error('Canister with id ' + id + ' is already installed')
+      if (this.canisters[params.id] !== undefined) {
+        throw new Error('Canister with id ' + params.id + ' is already installed')
       }
-      idPrin = Principal.from(id)
+      idPrin = Principal.from(params.id)
     }
 
     if (idPrin === undefined) {
       throw new Error('Could not establish id for canister')
     }
 
-    const canister = new Canister(this, idPrin, code)
-    await canister.init(initArgs, candid)
+    const canister = new WasmCanister(this, idPrin, code)
+    await canister.init(params.initArgs, params.caller ?? Principal.anonymous(), params.candid)
 
     this.canisters[idPrin.toString()] = canister
 
@@ -140,6 +163,8 @@ export class ReplicaContext {
     this.canisters = {}
     this.last_id = 0n
     this.messages = {}
+    this.canisters['aaaaa-aa'] = new ManagementCanister(this)
+
     // this.msg_log = []
   }
 }

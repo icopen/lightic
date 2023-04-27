@@ -13,8 +13,9 @@ import {
 } from '@dfinity/agent'
 import { type ActorSubclass, MockActor } from './mock_actor'
 import { type ReplicaContext } from './replica_context'
-import { Canister } from './canister'
 import { CallSource, CallStatus, CallType, Message } from './call_context'
+import { Canister } from './canister'
+import { WasmCanister } from './wasm_canister'
 
 // const log = debug('lightic:actor')
 
@@ -72,11 +73,10 @@ export class MockAgent implements Agent {
   }
 
   getActor (canister: Canister | string, idl: any | undefined = undefined): ActorSubclass {
-    if (canister instanceof Canister) {
-      return MockActor.createActor(this, canister, idl)
+    if (canister['get_id'] !== undefined) {
+      return MockActor.createActor(this, (canister as Canister).get_id(), idl)
     } else {
-      const item = this.replica.get_canister(Principal.from(canister))
-      return MockActor.createActor(this, item, idl)
+      return MockActor.createActor(this, Principal.from(canister), idl)
     }
   }
 
@@ -148,6 +148,8 @@ export class MockAgent implements Agent {
 
     if (msg.status === CallStatus.Ok && msg.result !== null) {
       return msg.result
+    } else if (msg.status === CallStatus.Error) {
+      throw new Error('Error while processing message, ' + msg.rejectionCode);
     }
 
     throw new Error('Message was not fully processed!')

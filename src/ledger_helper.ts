@@ -5,7 +5,7 @@ import https from 'node:https'
 import type http from 'node:http'
 import url from 'url'
 import pako from 'pako'
-import { type Canister } from './canister'
+import { type WasmCanister } from './wasm_canister'
 import { getAccount } from './utils'
 
 const latestRelease = 'f02cc38677905e24a9016637fddc697039930808'
@@ -96,7 +96,7 @@ class HttpPromise {
 }
 
 export class LedgerHelper {
-  public ledger: Canister
+  public ledger: WasmCanister
   public minter: Principal
   public owner: Principal
 
@@ -152,7 +152,7 @@ export class LedgerHelper {
         icrc1_minting_account: [],
         archive_options: []
       }]
-    })
+    }) as WasmCanister
 
     const helper: LedgerHelper = {
       ledger,

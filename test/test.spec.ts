@@ -14,7 +14,8 @@ describe('LightIc', function () {
 
     const canisters = context.replica.get_canisters()
 
-    assert.equal(canisters.length, 5)
+    //there is management canister installed by default
+    assert.equal(canisters.length, 6)
   })
 
   afterEach(function () {

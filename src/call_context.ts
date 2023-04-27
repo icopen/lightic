@@ -55,7 +55,8 @@ export enum CallStatus {
   New = 'New',
   Processing = 'Processing',
   Error = 'Error',
-  Ok = 'Ok'
+  Ok = 'Ok',
+  CanisterNotFound = 'CanisterNotFound'
 }
 export class Message {
   id: string
@@ -70,9 +71,12 @@ export class Message {
   payment: number
 
   status: CallStatus
+  rejectionCode: RejectionCode
+  rejectionMessage: ArrayBuffer | null
 
   result: ArrayBuffer | null
 
+  //For inter canister calls
   replyFun: number
   replyEnv: number
   rejectFun: number
@@ -98,12 +102,12 @@ export class Message {
     return this.method
   }
 
-  static init (canister: Principal, args: ArrayBuffer): Message {
+  static init (canister: Principal, sender: Principal, args: ArrayBuffer): Message {
     return new Message({
       type: CallType.Init,
       source: CallSource.Internal,
       target: canister,
-      sender: Principal.anonymous(),
+      sender: sender,
       method: '',
       args_raw: args
     })

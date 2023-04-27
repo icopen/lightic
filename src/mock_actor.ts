@@ -8,7 +8,6 @@ import {
   QueryCallRejectedError
 } from '@dfinity/agent'
 import { type MockAgent } from './mock_agent'
-import { type Canister } from './canister'
 
 const log = debug('lightic:actor')
 
@@ -30,13 +29,14 @@ export class MockActor {
 
   public static createActor<T = Record<string, ActorMethod>>(
     agent: MockAgent,
-    canister: Canister,
+    canister_id: Principal,
     idl: any | undefined = undefined
   ): ActorSubclass<T> {
     let service: IDL.ConstructType | undefined
     if (idl !== undefined) {
       service = idl({ IDL })
     } else {
+      let canister = agent.replica.get_canister(canister_id);
       service = canister.get_idl()
     }
     // const service = idl ?? canister.get_idl()
@@ -44,13 +44,13 @@ export class MockActor {
     class CanisterActor extends MockActor {
       [x: string]: ActorMethod;
 
-      constructor (agent: MockAgent, canister: Canister, service: any) {
+      constructor (agent: MockAgent, canister_id: Principal, service: any) {
         super()
 
         for (const [methodName, func] of service._fields) {
           this[methodName] = _createActorMethod(
             agent,
-            canister.get_id(),
+            canister_id,
             methodName,
             func
           )
@@ -58,7 +58,7 @@ export class MockActor {
       }
     }
 
-    const item = new CanisterActor(agent, canister, service)
+    const item = new CanisterActor(agent, canister_id, service)
 
     return item as ActorSubclass<T>
   }
