@@ -3,7 +3,6 @@
     "mochaExplorer.require": "ts-node/register",
     "mochaExplorer.env": { "DEBUG": "lightic*" },
     "cSpell.words": [
-        "cbor",
         "dfinity",
         "ecid",
         "icrc",
