@@ -9,6 +9,7 @@ use candid::{
 };
 
 mod target_json;
+mod bls;
 
 fn check_actor(env: &Env, actor: &Option<IDLType>) -> Result<Option<Type>, candid::error::Error> {
     match actor {

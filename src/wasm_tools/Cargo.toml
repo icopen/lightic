@@ -8,12 +8,23 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+default = ['std', 'allow_alt_compress']
+allow_alt_compress = []
+fallback_separator = []
+std = []
+
 [dependencies]
 candid = "0.8.4"
+miracl_core_bls12381 = { version="4.2.2", default-features=false, features= ['wasm-bindgen', 'allow_alt_compress'] } 
 serde_json = "1.0.96"
 wasm-bindgen = "0.2.84"
 wasm-encoder = "0.20.0"
 wasmparser = "0.95.0"
 
+[dev-dependencies]
+hex-literal = "0.4.1"
+
 [profile.release]
 lto = true
+opt-level = 'z'

@@ -1,6 +1,6 @@
 import { type Principal } from '@dfinity/principal'
 import { MockAgent } from './mock_agent'
-import { loadWasm } from './instrumentation'
+import { loadWasmFromFile } from './instrumentation'
 import { ReplicaContext } from './replica_context'
 import { Canister } from './canister'
 import fs from 'fs'
@@ -50,7 +50,7 @@ export class TestContext {
     }
 
     if (module === undefined) {
-      module = await loadWasm(filename)
+      module = await loadWasmFromFile(filename)
       this.compiled[filename] = module
     }
 

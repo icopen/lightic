@@ -13,7 +13,7 @@ const ic0log = log.extend('ic0')
 /// Implementation of Imports used by canisters according to The Internet Computer Interface Specification
 export class WasmCanister implements Canister {
   private readonly replica: ReplicaContext
-  private readonly module: WebAssembly.Module
+  private module?: WebAssembly.Module
   private instance: WebAssembly.Instance
 
   private memory: WebAssembly.Memory
@@ -37,33 +37,43 @@ export class WasmCanister implements Canister {
 
   private message: Message | null
 
-  constructor(replica: ReplicaContext, id: Principal, module: WebAssembly.Module) {
+  constructor(replica: ReplicaContext, id: Principal) {
     this.replica = replica
     this.id = id
-    this.module = module
     this.reply_buffer = new Uint8Array(102400)
     this.certified_data = new Uint8Array(32)
     this.reply_size = 0
     this.message = null
   }
 
-  get_id(): Principal {
-    return this.id
-  }
-
-  get_instance(): WebAssembly.Instance {
-    return this.instance
-  }
-
-  /// Calls init function of a canister
-  async init(initArgs: any, sender: Principal, candidSpec?: string): Promise<void> {
+  async install_module(code: WebAssembly.Module, initArgs: ArrayBuffer, sender: Principal) {
+    this.module = code
     const importObject = this.getImports()
+
+    if (this.module === undefined) return
+
+    this.instance = await WebAssembly.instantiate(this.module, importObject)
+    this.memory = this.instance.exports.memory as WebAssembly.Memory ?? this.instance.exports.mem as WebAssembly.Memory
+
+    if (initArgs !== undefined && initArgs !== null && initArgs.byteLength > 0) {
+      // Initialize canister
+      const msg = Message.init(this.id, sender, initArgs)
+      await this.process_message(msg)
+    }
+  }
+
+  async install_module_candid(code: WebAssembly.Module, initArgs: any, sender: Principal, candidSpec?: string) {
+    this.module = code
+
+    const importObject = this.getImports()
+
+    if (this.module === undefined) return
 
     this.instance = await WebAssembly.instantiate(this.module, importObject)
     this.memory = this.instance.exports.memory as WebAssembly.Memory ?? this.instance.exports.mem as WebAssembly.Memory
 
     if (candidSpec === undefined) {
-      candidSpec = this.get_candid()
+      candidSpec = await this.get_candid()
     }
 
     const jsonCandid = parse_candid(candidSpec)
@@ -76,8 +86,16 @@ export class WasmCanister implements Canister {
 
       // Initialize canister
       const msg = Message.init(this.id, sender, args)
-      this.process_message(msg)
+      await this.process_message(msg)
     }
+  }
+
+  get_id(): Principal {
+    return this.id
+  }
+
+  get_instance(): WebAssembly.Instance {
+    return this.instance
   }
 
   getIdlBuilder(): IDL.InterfaceFactory {
@@ -197,14 +215,16 @@ export class WasmCanister implements Canister {
           this.performance_counter.apply(self, args),
 
         debug_print: (...args) => this.debug_print.apply(self, args),
-        trap: (...args) => this.trap.apply(self, args)
+        trap: (...args) => this.trap.apply(self, args),
+
+        mint_cycles: (...args) => this.not_implemented.apply(self, ['mint_cycles', ...args]),
       }
     }
 
     return importObject
   }
 
-  public process_message(msg: Message): void {
+  public async process_message(msg: Message): Promise<void> {
     msg.status = CallStatus.Processing
 
     if (msg.type === CallType.ReplyCallback) {
@@ -238,7 +258,7 @@ export class WasmCanister implements Canister {
       // Check if function was found in wasm, this should be 4 Canister Reject
       if (func === undefined) {
         msg.status = CallStatus.Error
-        throw new Error('Function not found ' + msg.method)
+        throw new Error('Function not found ' + method)
       }
 
       log(this.id.toString() + ': Calling ' + msg.method)
@@ -271,7 +291,7 @@ export class WasmCanister implements Canister {
     this.caller = null
   }
 
-  public get_candid(): string {
+  public async get_candid(): Promise<string> {
     // const candidArgs = WebAssembly.Module.customSections(this.module, 'icp:private candid:args')
     // const stable = WebAssembly.Module.customSections(this.module, 'icp:private motoko:stable-types')
     // const compiler = WebAssembly.Module.customSections(this.module, 'icp:private motoko:compiler')
@@ -281,7 +301,7 @@ export class WasmCanister implements Canister {
     try {
       // log('Using candid hack if it exists')
       const msg = Message.candidHack(this.id)
-      this.process_message(msg)
+      await this.process_message(msg)
 
       if (msg.result !== null) {
         const decoded = IDL.decode([IDL.Text], msg.result)
@@ -292,6 +312,10 @@ export class WasmCanister implements Canister {
       }
     } catch (e) {
       log('Error when trying to get candid via hack')
+    }
+
+    if (this.module === undefined) {
+      throw new Error('Cannot get candid for canister with no module installed')
     }
 
     const candidRaw = WebAssembly.Module.customSections(this.module, 'icp:public candid:service')
@@ -440,12 +464,12 @@ export class WasmCanister implements Canister {
       source: CallSource.InterCanister
     })
 
-    msg.sender = this.id
+    msg.sender = Principal.fromText(this.id.toString())
 
     const view = new Uint8Array(this.memory.buffer, calleeSrc, calleeSize)
     const target = Principal.fromUint8Array(view)
 
-    msg.target = target
+    msg.target = Principal.fromText(target.toString())
 
     const view2 = new Uint8Array(this.memory.buffer, nameSrc, nameSize)
     const name = new TextDecoder().decode(view2)
@@ -543,6 +567,10 @@ export class WasmCanister implements Canister {
     view.set(new Uint8Array(this.memoryCopy))
 
     throw new Error('Canister trap!: ' + text)
+  }
+
+  mint_cycles(amount: bigint): bigint {
+    return amount
   }
 
   not_implemented(name, args): void {

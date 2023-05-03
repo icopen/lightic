@@ -8,11 +8,11 @@ const context = new TestContext()
 
 describe('Management Canister', function () {
   it('raw_rand', async function () {
-    let did = fs.readFileSync('./src/management_canister.did').toString()
-    let ts = parse_candid_to_js(did)
+    const did = fs.readFileSync('./src/management_canister.did').toString()
+    const ts = parse_candid_to_js(did)
     fs.writeFileSync('mgmt.did.js', ts)
 
-    let result = await context.getAgent(Principal.anonymous()).getActor('aaaaa-aa').raw_rand()
+    const result = await context.getAgent(Principal.anonymous()).getActor('aaaaa-aa').raw_rand()
     console.log(result)
   })
 })

@@ -13,6 +13,6 @@ export interface Canister {
   get_id(): Principal;
   get_idl(): IDL.ConstructType;
   
-  process_message(msg: Message): void;
+  process_message(msg: Message): Promise<void>;
 
 }

@@ -9,10 +9,10 @@ import { Canister } from './canister'
 const log = debug('lightic:replica')
 
 export interface InstallCanisterArgs {
-  initArgs: any,
-  candid: string | undefined,
-  id: string | undefined,
-  caller: Principal | undefined
+  initArgs?: any,
+  candid?: string,
+  id?: string,
+  caller?: Principal
 }
 
 export class ReplicaContext {
@@ -34,12 +34,12 @@ export class ReplicaContext {
 
   // Processes messages
   // Todo: add correct replica errors
-  private process_message (msg: Message): ArrayBuffer | null {
+  private async process_message (msg: Message): Promise<ArrayBuffer | null> {
     const canister = this.canisters[msg.target.toString()]
 
     if (canister !== undefined)
     {
-      canister.process_message(msg)
+      await canister.process_message(msg)
 
       // Process any waiting messages, before returning, ie all inter-canister calls
       this.process_messages()
@@ -59,24 +59,30 @@ export class ReplicaContext {
     // if (canister === undefined) {
     //   throw new Error('Canister not found! ' + msg.target.toString())
     // }
-    msg.id = (Object.keys(this.messages).length + 1).toString()
+
+    if (msg.id === undefined) {
+      msg.id = (Object.keys(this.messages).length + 1).toString()
+    }
+
     this.messages[msg.id] = msg
   }
 
   // Process all waiting messages
-  process_messages (): void {
+  async process_messages (): Promise<void> {
     while (Object.values(this.messages).some((x) => x.status === CallStatus.New)) {
       // Take first message from list for processing
       const msg = Object.values(this.messages).filter((x) => x.status === CallStatus.New)[0]
-      this.process_message(msg)
+      await this.process_message(msg)
 
       if (msg.source === CallSource.InterCanister && msg.type === CallType.Update) {
         if (msg.status === CallStatus.Ok) {
           const reply: Message = new Message({
             source: CallSource.InterCanister,
             type: CallType.ReplyCallback,
-            target: msg.sender,
-            sender: msg.target,
+            
+            target: Principal.fromText(msg.sender.toString()),
+            sender: Principal.fromText(msg.target.toString()),
+
             result: msg.result,
             args_raw: msg.result,
             replyFun: msg.replyFun,
@@ -92,8 +98,9 @@ export class ReplicaContext {
             source: CallSource.InterCanister,
             type: CallType.RejectCallback,
             rejectionCode: msg.rejectionCode,
-            target: msg.sender,
-            sender: msg.target,
+            
+            target: Principal.fromText(msg.sender.toString()),
+            sender: Principal.fromText(msg.target.toString()),
 
             result: msg.result,
             args_raw: msg.result,
@@ -109,7 +116,7 @@ export class ReplicaContext {
     }
   }
 
-  get_message (id: string): Message {
+  get_message (id: string): Message | undefined {
     return this.messages[id]
   }
 
@@ -121,6 +128,30 @@ export class ReplicaContext {
     const id = u64IntoCanisterId(this.last_id + 1n)
     this.last_id += 1n
     return id
+  }
+
+  create_canister(params?: InstallCanisterArgs): Canister {
+    let idPrin: Principal | undefined
+    
+    if (params === undefined || params.id === undefined) {
+      idPrin = this.get_canister_id()
+    } else {
+      if (this.canisters[params.id] !== undefined) {
+        throw new Error('Canister with id ' + params.id + ' is already installed')
+      }
+      idPrin = Principal.from(params.id)
+    }
+
+    if (idPrin === undefined) {
+      throw new Error('Could not establish id for canister')
+    }
+
+    const canister = new WasmCanister(this, idPrin)
+
+    this.canisters[idPrin.toString()] = canister
+    log('Created canister with id: %s', idPrin.toString())
+
+    return canister
   }
 
   // Installs code as a canister in replica, assigns ID in similar fashion as replica
@@ -143,8 +174,8 @@ export class ReplicaContext {
       throw new Error('Could not establish id for canister')
     }
 
-    const canister = new WasmCanister(this, idPrin, code)
-    await canister.init(params.initArgs, params.caller ?? Principal.anonymous(), params.candid)
+    const canister = new WasmCanister(this, idPrin)
+    await canister.install_module_candid(code, params.initArgs, params.caller ?? Principal.anonymous(), params.candid)
 
     this.canisters[idPrin.toString()] = canister
 

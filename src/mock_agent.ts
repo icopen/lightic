@@ -25,10 +25,6 @@ import { WasmCanister } from './wasm_canister'
 
 // export type ActorSubclass<T = Record<string, ActorMethod>> = MockActor & T
 
-const DER_PREFIX = fromHex(
-  '308182301d060d2b0601040182dc7c0503010201060c2b0601040182dc7c05030201036100'
-)
-
 export class MockAgent implements Agent {
   readonly rootKey: ArrayBuffer | null
 
@@ -40,32 +36,8 @@ export class MockAgent implements Agent {
     this.caller = identity
 
     const rootKey = new Uint8Array(133)
-    rootKey.set(new Uint8Array(DER_PREFIX))
+    // rootKey.set(new Uint8Array(DER_PREFIX))
     this.rootKey = rootKey
-
-    // const ctx = new CTX('BLS12381')
-    // if (ctx.BLS.init() !== 0) {
-    //   throw new Error('Cannot initialize BLS')
-    // }
-
-    // const RAW: number[] = []
-    // const rng = new ctx.RAND()
-
-    // rng.clean()
-    // for (let i = 0; i < 100; i++) {
-    //   RAW[i] = i
-    // }
-    // rng.seed(100, RAW)
-
-    // const W0 = []
-    // const S0 = []
-
-    // ctx.ECDH.KEY_PAIR_GENERATE(rng, S0, W0)
-
-    // const valid = ctx.ECDH.PUBLIC_KEY_VALIDATE(W0)
-    // if (valid !== 0) {
-    //   console.error('ECP_ZZZ Public Key is invalid!')
-    // }
   }
 
   async getPrincipal (): Promise<Principal> {
@@ -87,6 +59,7 @@ export class MockAgent implements Agent {
   async readState (effectiveCanisterId: Principal | string, options: ReadStateOptions, identity?: Identity, request?: any): Promise<ReadStateResponse> {
     const name = new TextDecoder().decode(options.paths[0][0])
     const msg = this.replica.get_message(options.paths[0][1] as any as string)
+    if (msg === undefined) throw new Error('Message was not found!')
 
     if (name === 'request_status') {
       const cert = Cbor.encode({
@@ -118,8 +91,8 @@ export class MockAgent implements Agent {
       type: CallType.Update,
       source: CallSource.Ingress,
 
-      target,
-      sender: this.caller,
+      target: Principal.fromText(target.toString()),
+      sender: Principal.fromText(this.caller.toString()),
 
       method: fields.methodName,
       args_raw: fields.arg
@@ -127,7 +100,7 @@ export class MockAgent implements Agent {
 
     // Store and process message
     this.replica.store_message(msg)
-    this.replica.process_messages()
+    await this.replica.process_messages()
 
     const requestId = msg.id as any as RequestId
 
@@ -144,6 +117,7 @@ export class MockAgent implements Agent {
   async waitForResponse (requestId: RequestId): Promise<ArrayBuffer> {
     const msg = this.replica.get_message(requestId as any as string)
 
+    if (msg === undefined) throw new Error('Message was not found!')
     // await this.replica.process_pending_messages()
 
     if (msg.status === CallStatus.Ok && msg.result !== null) {
@@ -173,8 +147,8 @@ export class MockAgent implements Agent {
       type: CallType.Query,
       source: CallSource.Ingress,
 
-      target,
-      sender: this.caller,
+      target: Principal.fromText(target.toString()),
+      sender: Principal.fromText(this.caller.toString()),
 
       method: options.methodName,
       args_raw: options.arg
@@ -182,7 +156,7 @@ export class MockAgent implements Agent {
 
     // Store and process message
     this.replica.store_message(msg)
-    this.replica.process_messages()
+    await this.replica.process_messages()
 
     const response: QueryResponseReplied = {
       status: QueryResponseStatus.Replied,
@@ -199,10 +173,8 @@ export class MockAgent implements Agent {
   }
 
   invalidateIdentity? (): void {
-
   }
 
   replaceIdentity? (identity: Identity): void {
-
   }
 }

@@ -59,7 +59,7 @@ export enum CallStatus {
   CanisterNotFound = 'CanisterNotFound'
 }
 export class Message {
-  id: string
+  id?: string
   type: CallType
   source: CallSource
 
@@ -106,8 +106,8 @@ export class Message {
     return new Message({
       type: CallType.Init,
       source: CallSource.Internal,
-      target: canister,
-      sender: sender,
+      target: Principal.fromText(canister.toString()),
+      sender: Principal.fromText(sender.toString()),
       method: '',
       args_raw: args
     })
@@ -117,7 +117,7 @@ export class Message {
     return new Message({
       type: CallType.Query,
       source: CallSource.Internal,
-      target: canister,
+      target: Principal.fromText(canister.toString()),
       sender: Principal.anonymous(),
       method: '__get_candid_interface_tmp_hack',
       args_raw: IDL.encode([], []),
@@ -126,13 +126,13 @@ export class Message {
   }
 
   static query (
-    canister: Principal, name: string, caller: Principal, args: ArrayBuffer
+    canister: Principal, name: string, sender: Principal, args: ArrayBuffer
   ): Message {
     return new Message({
       type: CallType.Query,
       source: CallSource.Ingress,
-      target: canister,
-      sender: caller,
+      target: Principal.fromText(canister.toString()),
+      sender: Principal.fromText(sender.toString()),
       method: name,
       args_raw: args,
       payment: 0
@@ -140,13 +140,13 @@ export class Message {
   }
 
   static update (
-    canister: Principal, name: string, caller: Principal, args: ArrayBuffer
+    canister: Principal, name: string, sender: Principal, args: ArrayBuffer
   ): Message {
     return new Message({
       type: CallType.Update,
       source: CallSource.Ingress,
-      target: canister,
-      sender: caller,
+      target: Principal.fromText(canister.toString()),
+      sender: Principal.fromText(sender.toString()),
       method: name,
       args_raw: args,
       payment: 0
