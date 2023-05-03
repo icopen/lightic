@@ -34,11 +34,14 @@ export class Tree {
         this.node = {nodes: []}
     }
 
-    insertValue(path: (Buffer | string)[], val: Buffer | string) {
+    insertValue(path: (Buffer | string)[], val: Buffer | string | number) {
         const node = this.traverseTree(this.node, path)
         
         if (typeof val === 'string') {
             val = Buffer.from(new TextEncoder().encode(val))
+        }
+        if (typeof val === 'number') {
+            val = Buffer.from([val])
         }
         
         node.value = val

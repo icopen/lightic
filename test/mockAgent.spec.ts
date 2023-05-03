@@ -4,10 +4,10 @@ import { assert } from 'chai'
 import { TestContext, getAccount, LedgerHelper } from '../src'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-// const agent = require('@dfinity/agent/lib/cjs/utils/bls')
-// agent.blsVerify = async (pk: Uint8Array, sig: Uint8Array, msg: Uint8Array): Promise<boolean> => {
-//   return true
-// }
+const agent = require('@dfinity/agent/lib/cjs/utils/bls')
+agent.blsVerify = async (pk: Uint8Array, sig: Uint8Array, msg: Uint8Array): Promise<boolean> => {
+  return true
+}
 
 const context = new TestContext()
 

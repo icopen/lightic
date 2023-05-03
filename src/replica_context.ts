@@ -125,7 +125,7 @@ export class ReplicaContext {
   }
 
   get_canister_id (): Principal {
-    const id = u64IntoCanisterId(this.last_id + 1n)
+    const id = u64IntoCanisterId(this.last_id)
     this.last_id += 1n
     return id
   }

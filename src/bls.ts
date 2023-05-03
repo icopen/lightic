@@ -5,7 +5,7 @@ import { CTX } from '../miracl/javascript/index.js'
 import { bls_sign } from './wasm_tools/pkg/wasm_tools.js'
 import { bls_init } from './wasm_tools/pkg/wasm_tools.js'
 
-const DER_PREFIX = fromHex(
+export const DER_PREFIX = fromHex(
     '308182301d060d2b0601040182dc7c0503010201060c2b0601040182dc7c05030201036100'
 )
 

@@ -156,12 +156,11 @@ app.post('/api/v2/canister/:canisterId/call', (req, res) => {
                         await context.process_messages();
 
                         res.status(202)
-                        res.send()
                     } catch (e) {
                         console.log("Error: " + e)
-                        res.send({})
+                        // res.send({})
                     }
-
+                    res.send()
                 } else {
                     res.send({})
                 }
@@ -226,7 +225,7 @@ app.post('/api/v2/canister/:canisterId/read_state', (req, res) => {
                         res.send(resp)
                     } else if (msg.status === CallStatus.Error) {
                         const tree = new Tree();
-                        tree.insertValue(['request_status', msgId, 'reject_code'], msg.rejectionCode.toString())
+                        tree.insertValue(['request_status', msgId, 'reject_code'], msg.rejectionCode)
                         if (msg.rejectionMessage !== null && msg.rejectionMessage !== undefined) {
                             tree.insertValue(['request_status', msgId, 'reject_message'], Buffer.from(msg.rejectionMessage))
                         }

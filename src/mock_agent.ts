@@ -16,6 +16,7 @@ import { type ReplicaContext } from './replica_context'
 import { CallSource, CallStatus, CallType, Message } from './call_context'
 import { Canister } from './canister'
 import { WasmCanister } from './wasm_canister'
+import { DER_PREFIX } from './bls'
 
 // const log = debug('lightic:actor')
 
@@ -36,7 +37,7 @@ export class MockAgent implements Agent {
     this.caller = identity
 
     const rootKey = new Uint8Array(133)
-    // rootKey.set(new Uint8Array(DER_PREFIX))
+    rootKey.set(new Uint8Array(DER_PREFIX))
     this.rootKey = rootKey
   }
 
@@ -169,7 +170,7 @@ export class MockAgent implements Agent {
   }
 
   async fetchRootKey (): Promise<ArrayBuffer> {
-    return this.rootKey ?? new Uint8Array(32)
+    return this.rootKey ?? new Uint8Array(133)
   }
 
   invalidateIdentity? (): void {
