@@ -7,6 +7,7 @@ import cbor, { Tagged } from 'cbor'
 
 describe('Hash Tree', function () {
     it('create', async function () {
+        console.profile()
         const message = new Uint8Array(fromHexString('0ed555d9bfa07404c59b17116793348fdea037856fe57d835ba81b5ad16211fd'))
         const msgId = '1'
 
@@ -22,8 +23,8 @@ describe('Hash Tree', function () {
 
         const encoded1 = cbor.encode(tree3)
         const encoded2 = cbor.encode(tree4)
+        console.profileEnd()
 
-        debugger
     })
 
     it('get hash tree', async function () {

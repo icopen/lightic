@@ -9,7 +9,7 @@ import { Canister } from './canister'
 const log = debug('lightic:replica')
 
 export interface InstallCanisterArgs {
-  initArgs?: any,
+  initArgs?: ArrayBuffer,
   candid?: string,
   id?: string,
   caller?: Principal
@@ -42,7 +42,7 @@ export class ReplicaContext {
 
   // Processes messages
   // Todo: add correct replica errors
-  private async process_message(msg: Message): Promise<ArrayBuffer | null> {
+  private async process_message(msg: Message): Promise<ArrayBuffer | undefined> {
     const canister = this.canisters[msg.target.toString()]
 
     if (canister !== undefined) {

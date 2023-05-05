@@ -12,10 +12,4 @@ describe('IDL Build', function () {
     const candid = JSON.parse(jsonCandid)
     buildIdl(IDL, candid)
   })
-
-  it('empty', async function () {
-    let res = undefined
-    let result = IDL.encode([], [res])
-    debugger;
-  })
 })

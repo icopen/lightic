@@ -46,7 +46,7 @@ export class ManagementCanister implements Canister {
   get_id(): Principal {
     throw new Error("Method not implemented.")
   }
-  get_idl(): ConstructType<any> {
+  get_idl(): ConstructType {
     return this.idl
   }
   async process_message(msg: Message): Promise<void> {
@@ -58,7 +58,7 @@ export class ManagementCanister implements Canister {
           const argTypes = field[1].argTypes
           const retTypes = field[1].retTypes
 
-          if (msg.args_raw !== null) {
+          if (msg.args_raw !== undefined) {
             const args = IDL.decode(argTypes, msg.args_raw)
 
             try {

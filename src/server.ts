@@ -7,7 +7,7 @@ import { CallSource, CallStatus, CallType, Message } from './call_context';
 import { Principal } from '@dfinity/principal';
 import { ReadStateResponse, requestIdOf, toHex, concat, HashTree, reconstruct } from '@dfinity/agent';
 
-import { Tree, makeHashTreeOld, mergeTrees } from './hash_tree';
+import { Tree } from './hash_tree';
 
 import { Bls } from './bls';
 
@@ -312,7 +312,7 @@ app.post('/api/v2/canister/:canisterId/read_state', (req, res) => {
                 const msgIdStr = toHex(msgId)
 
                 const msg = context.get_message(msgIdStr)
-                if (msg !== undefined && msg.result !== null) {
+                if (msg !== undefined && msg.result !== undefined) {
                     if (msg.status === CallStatus.Ok) {
                         const tree = new Tree();
                         tree.insertValue(['request_status', msgId, 'reply'], Buffer.from(msg.result))

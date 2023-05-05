@@ -1,7 +1,6 @@
 import { type JsonObject } from '@dfinity/candid'
 import { Principal } from '@dfinity/principal'
 
-// import debug from 'debug'
 import {
   type Identity, type QueryFields, type QueryResponse,
   type QueryResponseReplied,
@@ -9,22 +8,13 @@ import {
   type SubmitResponse, type ReadStateOptions, type ReadStateResponse,
   type RequestId,
   Cbor,
-  fromHex
 } from '@dfinity/agent'
 import { type ActorSubclass, MockActor } from './mock_actor'
 import { type ReplicaContext } from './replica_context'
 import { CallSource, CallStatus, CallType, Message } from './call_context'
 import { Canister } from './canister'
-import { WasmCanister } from './wasm_canister'
 import { DER_PREFIX } from './bls'
 
-// const log = debug('lightic:actor')
-
-// export type ActorMethod<Args extends unknown[] = unknown[]> = (
-//   ...args: Args
-// ) => Promise<unknown>
-
-// export type ActorSubclass<T = Record<string, ActorMethod>> = MockActor & T
 
 export class MockAgent implements Agent {
   readonly rootKey: ArrayBuffer | null
@@ -53,6 +43,7 @@ export class MockAgent implements Agent {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async createReadStateRequest? (options: ReadStateOptions, identity?: Identity): Promise<any> {
     return ''
   }
@@ -121,7 +112,7 @@ export class MockAgent implements Agent {
     if (msg === undefined) throw new Error('Message was not found!')
     // await this.replica.process_pending_messages()
 
-    if (msg.status === CallStatus.Ok && msg.result !== null) {
+    if (msg.status === CallStatus.Ok && msg.result !== undefined) {
       return msg.result
     } else if (msg.status === CallStatus.Error) {
       throw new Error('Error while processing message, ' + msg.rejectionCode);

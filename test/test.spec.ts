@@ -89,6 +89,8 @@ describe('ic0', function () {
       const canister = await context.deploy('./spec_test/target/wasm32-unknown-unknown/release/spec_test.wasm')
       const actor = context.getAgent(invokingPrincipal).getActor(canister)
 
+      console.profile()
+
       // Supply our canister with 1_000_000 of ICP
       const args = LedgerHelper.getSendArgs(canister.get_id(), 1_000_000)
       await ledgerActor.transfer(args)
@@ -100,6 +102,7 @@ describe('ic0', function () {
         100_000)
 
       console.log(result)
+      console.profileEnd()
     })
   })
 })

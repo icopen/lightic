@@ -67,14 +67,14 @@ export class Message {
   sender: Principal
 
   method: string
-  args_raw: ArrayBuffer | null
+  args_raw?: ArrayBuffer
   payment: number
 
   status: CallStatus
   rejectionCode: RejectionCode
-  rejectionMessage: ArrayBuffer | null
+  rejectionMessage?: ArrayBuffer
 
-  result: ArrayBuffer | null
+  result?: ArrayBuffer
 
   //For inter canister calls
   replyFun: number
