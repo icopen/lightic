@@ -9,6 +9,9 @@ export enum CanisterStatus {
 }
 
 export interface Canister {
+  // timestamp at which given canister was created
+  created: bigint
+
   getIdlBuilder(): IDL.InterfaceFactory;
   get_id(): Principal;
   get_idl(): IDL.ConstructType;

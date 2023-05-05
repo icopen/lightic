@@ -33,10 +33,12 @@ export class ManagementCanister implements Canister {
   private context: ReplicaContext
 
   private idl: ConstructType
+  readonly created: bigint
 
   constructor(context: ReplicaContext) {
     this.context = context
     this.idl = idlFactory({ IDL })
+    this.created = 0n
   }
   getIdlBuilder(): InterfaceFactory {
     throw new Error("Method not implemented.")
@@ -91,6 +93,7 @@ export class ManagementCanister implements Canister {
 
       msg.status = CallStatus.Error
       msg.rejectionCode = RejectionCode.CanisterReject
+      msg.rejectionMessage = new TextEncoder().encode(`Invalid function ${msg.method}`)
     }
 
   }

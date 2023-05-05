@@ -17,6 +17,7 @@ const context = new ReplicaContext();
 
 const app = express();
 const port = 8001;
+// const port = 4943;
 
 interface CallContent {
     request_type: string,
@@ -54,7 +55,7 @@ app.use(express.raw())
 app.use(express.json())
 
 app.all('/api/v2/*', function (req, res, next) {
-    console.log(`[server]: URL Request: ${req.method} ${req.url}`)
+    // console.log(`[server]: URL Request: ${req.method} ${req.url}`)
     // console.log('General Validations');
     next();
 });
@@ -69,35 +70,97 @@ app.post('/api/v2/canister/:canisterId/query', (req, res) => {
         const data = tag.value as CallRequest<QueryContent>
         const content = data.content
 
+        if (content.sender === undefined) {
+            res.status(400)
+            res.send('Missing sender')
+
+            return
+        }
+
+        if (content.arg === undefined) {
+            res.status(400)
+            res.send('Missing arg')
+
+            return
+        }
+
+        if (content.method_name === undefined) {
+            res.status(400)
+            res.send('Missing arg')
+
+            return
+        }
+
+
+        if (content.canister_id === undefined) {
+            res.status(400)
+            res.send('Missing canister_id')
+
+            return
+        }
+
+        if (data.content.request_type !== 'query') {
+            res.status(400)
+            res.send('Invalid request type')
+
+            return
+        }
+
+        
+
         const sender = Principal.fromUint8Array(content.sender)
         const canister_id = Principal.fromUint8Array(content.canister_id)
         const reqId = toHex(requestIdOf(data.content))
 
-        if (content.request_type === 'query') {
-            const msg = new Message({
-                id: reqId,
-                type: CallType.Query,
-                source: CallSource.Ingress,
-                args_raw: content.arg,
-                method: content.method_name,
+        const msg = new Message({
+            id: reqId,
+            type: CallType.Query,
+            source: CallSource.Ingress,
+            args_raw: content.arg,
+            method: content.method_name,
 
-                target: Principal.fromText(canister_id.toString()),
-                sender: Principal.fromText(sender.toString()),
-            })
-            context.store_message(msg);
-            try {
-                await context.process_messages();
+            target: Principal.fromText(canister_id.toString()),
+            sender: Principal.fromText(sender.toString()),
+        })
+        context.store_message(msg);
+        try {
+            await context.process_messages()
 
-                res.status(202)
-                res.send()
-            } catch (e) {
-                console.log("Error: " + e)
-                res.send({})
+            if (msg.status !== CallStatus.Ok) {
+                throw new Error()
             }
 
-        } else {
-            res.send({})
+            if (msg.result !== undefined && msg.result !== null) {
+                const resp = {
+                    status: 'replied',
+                    reply: {
+                        arg: Buffer.from(msg.result)
+                    }
+                }
+                const tagged = new Tagged(55799, resp);
+                const cborResp = cbor.encode(tagged)
+
+                res.status(202)
+                res.send(cborResp)
+            } else {
+                res.status(202)
+                res.send()
+            }
+        } catch {
+            const tagged = new Tagged(55799, {
+                status: 'rejected',
+                reject_code: msg.rejectionCode,
+            });
+            if (msg.rejectionMessage !== null && msg.rejectionMessage !== undefined) {
+                tagged.value.reject_message = new TextDecoder().decode(Buffer.from(msg.rejectionMessage))
+            }
+
+            const cborResp = cbor.encode(tagged)
+
+            // console.log("Error: " + e)
+            res.send(cborResp)
         }
+
     })
 });
 
@@ -123,6 +186,35 @@ app.post('/api/v2/canister/:canisterId/call', (req, res) => {
 
         const tag = cbor.decode(rawData)
         const data = tag.value as CallRequest<CallContent>
+        const content = data.content
+
+        if (content.sender === undefined) {
+            res.status(400)
+            res.send('Missing sender')
+
+            return
+        }
+
+        if (content.method_name === undefined) {
+            res.status(400)
+            res.send('Missing method name')
+
+            return
+        }
+
+        if (content.canister_id === undefined) {
+            res.status(400)
+            res.send('Missing canister_id')
+
+            return
+        }
+
+        if (data.content.request_type !== 'call') {
+            res.status(400)
+            res.send('Invalid request type')
+
+            return
+        }
 
         if (tag.tag !== 55799) {
             res.send({});
@@ -202,6 +294,13 @@ app.post('/api/v2/canister/:canisterId/read_state', (req, res) => {
 
         const tag = cbor.decode(body[0] as Buffer)
         const data = tag.value as CallRequest<ReadStateContent>
+
+        if (data.content.request_type !== 'read_state') {
+            res.status(400)
+            res.send('Invalid request type')
+
+            return
+        }
 
         const paths = data.content.paths
 

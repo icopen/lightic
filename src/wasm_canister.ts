@@ -6,6 +6,7 @@ import { type ReplicaContext } from './replica_context'
 import { parse_candid } from './wasm_tools/pkg/wasm_tools'
 import { CanisterStatus, Canister } from './canister'
 import debug from 'debug'
+import { canisterIdIntoU64 } from './utils'
 
 const log = debug('lightic:canister')
 const ic0log = log.extend('ic0')
@@ -18,7 +19,7 @@ export class WasmCanister implements Canister {
 
   private memory: WebAssembly.Memory
 
-  private readonly cycles: number
+  private cycles: bigint
   private readonly id: Principal
   private caller: Principal | null
 
@@ -37,13 +38,25 @@ export class WasmCanister implements Canister {
 
   private message: Message | null
 
+  private newMessage?: Message
+  private newMessageArgs: Uint8Array
+  private newMessageReplySize: number
+
+  readonly created: bigint
+
   constructor(replica: ReplicaContext, id: Principal) {
     this.replica = replica
     this.id = id
     this.reply_buffer = new Uint8Array(102400)
+    this.newMessageArgs = new Uint8Array(102400)
+    this.newMessageReplySize = 0
     this.certified_data = new Uint8Array(32)
     this.reply_size = 0
     this.message = null
+    this.created = process.hrtime.bigint()
+
+    // 1T of cycles by default
+    this.cycles = 1_000_000_000_000n
   }
 
   async install_module(code: WebAssembly.Module, initArgs: ArrayBuffer, sender: Principal) {
@@ -258,6 +271,9 @@ export class WasmCanister implements Canister {
       // Check if function was found in wasm, this should be 4 Canister Reject
       if (func === undefined) {
         msg.status = CallStatus.Error
+        msg.rejectionCode = RejectionCode.DestinationInvalid
+        msg.rejectionMessage = new TextEncoder().encode('Function not found ' + method)
+
         throw new Error('Function not found ' + method)
       }
 
@@ -289,6 +305,12 @@ export class WasmCanister implements Canister {
     // If call was an query, revert canister state
     if (msg.type === CallType.Query) {
       new Uint8Array(this.memory.buffer).set(new Uint8Array(this.memoryCopy))
+
+      if (msg.status === CallStatus.Processing) {
+        msg.status = CallStatus.Error
+        msg.rejectionCode = RejectionCode.CanisterError
+        msg.rejectionMessage = new TextEncoder().encode('Query call trapped')
+      }
     }
 
     this.caller = null
@@ -433,6 +455,10 @@ export class WasmCanister implements Canister {
     ic0log('msg_reply')
 
     if (this.message !== null) {
+      if (this.message.status === CallStatus.Ok) {
+        throw new Error('Message already replied')
+      }
+
       ic0log(this.message.id + ' ' + this.message.method)
       this.message.status = CallStatus.Ok
       this.message.result = this.reply_buffer.subarray(0, this.reply_size)
@@ -450,6 +476,8 @@ export class WasmCanister implements Canister {
       const view = new Uint8Array(this.memory.buffer, src, size)
       this.reply_buffer.set(view, size)
       const msg = this.reply_buffer.subarray(0, size)
+
+      this.message.rejectionMessage = msg
     }
   }
 
@@ -487,9 +515,9 @@ export class WasmCanister implements Canister {
     msg.rejectFun = rejectFun
     msg.rejectEnv = rejectEnv
 
-    this.reply_size = 0
 
-    this.message = msg
+    this.newMessage = msg
+    this.newMessageReplySize = 0
 
     ic0log('call_new: %o %o', target.toString(), name)
   }
@@ -497,31 +525,31 @@ export class WasmCanister implements Canister {
   call_data_append(src: number, size: number): void {
     const view = new Uint8Array(this.memory.buffer, src, size)
 
-    this.reply_buffer.set(view, this.reply_size)
-    this.reply_size += size
+    this.newMessageArgs.set(view, this.newMessageReplySize)
+    this.newMessageReplySize += size
     ic0log('call_data_append: %o %o', src, size)
   }
 
-  listAllProperties(o: object): any {
-    let objectToInspect
-    let result: string[] = []
+  // listAllProperties(o: object): any {
+  //   let objectToInspect
+  //   let result: string[] = []
 
-    for (objectToInspect = o; objectToInspect !== null; objectToInspect = Object.getPrototypeOf(objectToInspect)) {
-      result = result.concat(Object.getOwnPropertyNames(objectToInspect))
-    }
+  //   for (objectToInspect = o; objectToInspect !== null; objectToInspect = Object.getPrototypeOf(objectToInspect)) {
+  //     result = result.concat(Object.getOwnPropertyNames(objectToInspect))
+  //   }
 
-    return result
-  }
+  //   return result
+  // }
 
   call_perform(): number {
-    if (this.message == null) return 1
+    if (this.newMessage == null) return 1
 
-    const args = this.reply_buffer.subarray(0, this.reply_size)
+    const args = this.newMessageArgs.subarray(0, this.newMessageReplySize)
 
-    this.message.args_raw = args
+    this.newMessage.args_raw = args
 
     // Store inter canister message to be processed after this call is completed
-    this.replica.store_message(this.message)
+    this.replica.store_message(this.newMessage)
 
     return 0
   }
@@ -573,7 +601,14 @@ export class WasmCanister implements Canister {
   }
 
   mint_cycles(amount: bigint): bigint {
-    throw new Error('53: cycles minting prohibited!')
+    const canId = canisterIdIntoU64(this.id)
+
+    if (canId !== 4n) {
+      throw new Error('ic0.mint_cycles can only be executed on Cycles Minting Canister:')
+    }
+
+    this.cycles += amount
+
     return amount
   }
 
