@@ -8,8 +8,8 @@ use candid::{
     IDLProg, TypeEnv,
 };
 
-mod target_json;
 mod bls;
+mod target_json;
 
 fn check_actor(env: &Env, actor: &Option<IDLType>) -> Result<Option<Type>, candid::error::Error> {
     match actor {
@@ -33,7 +33,7 @@ fn check_actor(env: &Env, actor: &Option<IDLType>) -> Result<Option<Type>, candi
 
 fn check_file_(prog: &str) -> Result<(TypeEnv, Option<Type>), candid::error::Error> {
     let prog = prog.parse::<IDLProg>()?;
-    
+
     let mut te = TypeEnv::new();
 
     check_prog(&mut te, &prog)?;
@@ -72,31 +72,28 @@ pub fn parse_candid(data: &str) -> Result<String, String> {
     Ok(target_json::compile(&env, &actor))
 }
 
-mod wasm_transform;
 mod instrumentation;
+mod wasm_transform;
 
 #[wasm_bindgen]
 pub fn wasm_instrument(data: &[u8]) -> Result<Vec<u8>, String> {
+    let mut module = Module::parse(data, false).map_err(|x| format!("{x}"))?;
 
-  let mut module = Module::parse(data, false)
-  .map_err(|x| format!("{x}"))?;
+    module = export_table(module);
 
-  module = export_table(module);
+    let enc = module.encode().map_err(|x| format!("{x}"))?;
 
-  let enc = module.encode()
-  .map_err(|x| format!("{x}"))?;
-  
-  Ok(enc)
+    Ok(enc)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::{Value};
+    use serde_json::Value;
 
     #[test]
     fn parse_test_4() -> Result<(), String> {
-      let data = "type WhitelistSlot = 
+        let data = "type WhitelistSlot = 
       record {
         end: Time__2;
         start: Time__2;
@@ -794,21 +791,20 @@ mod tests {
      type AccountIdentifier__1 = text;
      type AccountIdentifier = text;
      service : (principal) -> Canister";
-      let result = parse_candid(data)?;
-      println!("{result}");
+        let result = parse_candid(data)?;
+        println!("{result}");
 
-      let _v: Value = serde_json::from_str(&result).map_err(|x| format!("{}", x))?;
+        let _v: Value = serde_json::from_str(&result).map_err(|x| format!("{}", x))?;
 
+        // let js_result = parse_candid_to_js(data)?;
+        // println!("{js_result}");
 
-      // let js_result = parse_candid_to_js(data)?;
-      // println!("{js_result}");
-
-      Ok(())
+        Ok(())
     }
 
     #[test]
     fn parse_test_3() -> Result<(), String> {
-      let data = "type Account = record { owner : principal; subaccount : opt vec nat8 };
+        let data = "type Account = record { owner : principal; subaccount : opt vec nat8 };
       type AccountBalanceArgs = record { account : text };
       type ArchiveInfo = record { canister_id : principal };
       type ArchiveOptions = record {  num_blocks_to_archive : nat64;  max_transactions_per_response : opt nat64;  trigger_threshold : nat64;  max_message_size_bytes : opt nat64;  cycles_for_archive_creation : opt nat64;  node_max_memory_size_bytes : opt nat64;  controller_id : principal;};
@@ -840,26 +836,25 @@ mod tests {
       type TransferFee = record { transfer_fee : Tokens };
       type Value = variant { Int : int; Nat : nat; Blob : vec nat8; Text : text };
       service : (LedgerCanisterInitPayload) -> {  account_balance : (BinaryAccountBalanceArgs) -> (Tokens) query;  account_balance_dfx : (AccountBalanceArgs) -> (Tokens) query;  archives : () -> (Archives) query;  decimals : () -> (Decimals) query;  icrc1_balance_of : (Account) -> (nat) query;  icrc1_decimals : () -> (nat8) query;  icrc1_fee : () -> (nat) query;  icrc1_metadata : () -> (vec record { text; Value }) query;  icrc1_minting_account : () -> (opt Account) query;  icrc1_name : () -> (text) query;  icrc1_supported_standards : () -> (vec StandardRecord) query;  icrc1_symbol : () -> (text) query;  icrc1_total_supply : () -> (nat) query;  icrc1_transfer : (TransferArg) -> (Result);  name : () -> (Name) query;  query_blocks : (GetBlocksArgs) -> (QueryBlocksResponse) query;  send_dfx : (SendArgs) -> (nat64);  symbol : () -> (Symbol) query;  transfer : (TransferArgs) -> (Result_1);  transfer_fee : (record {}) -> (TransferFee) query;}";
-      let result = parse_candid(data)?;
-      let _v: Value = serde_json::from_str(&result).map_err(|x| format!("{}", x))?;
-      println!("{result}");
+        let result = parse_candid(data)?;
+        let _v: Value = serde_json::from_str(&result).map_err(|x| format!("{}", x))?;
+        println!("{result}");
 
-      // let js_result = parse_candid_to_js(data)?;
-      // println!("{js_result}");
+        // let js_result = parse_candid_to_js(data)?;
+        // println!("{js_result}");
 
-      Ok(())
+        Ok(())
     }
 
     #[test]
     fn parse_test_2() -> Result<(), String> {
-      let data = "type Result = variant { Ok : nat32; Err : text };service : () -> {  test_balance : () -> (nat64) query;  test_balance128 : () -> (nat) query;  test_caller : () -> (principal) query;  test_canister_version : () -> (nat64) query;  test_data_certificate : () -> (opt vec nat8) query;  test_id : () -> (principal) query;  test_instruction_counter : () -> (nat64) query;  test_inter_canister : () -> (Result);  test_stable64_size : () -> (nat64) query;  test_stable_size : () -> (nat32) query;  test_updates : () -> (Result);}";
-      let result = parse_candid(data)?;
-      let _v: Value = serde_json::from_str(&result).map_err(|x| format!("{}", x))?;
+        let data = "type Result = variant { Ok : nat32; Err : text };service : () -> {  test_balance : () -> (nat64) query;  test_balance128 : () -> (nat) query;  test_caller : () -> (principal) query;  test_canister_version : () -> (nat64) query;  test_data_certificate : () -> (opt vec nat8) query;  test_id : () -> (principal) query;  test_instruction_counter : () -> (nat64) query;  test_inter_canister : () -> (Result);  test_stable64_size : () -> (nat64) query;  test_stable_size : () -> (nat32) query;  test_updates : () -> (Result);}";
+        let result = parse_candid(data)?;
+        let _v: Value = serde_json::from_str(&result).map_err(|x| format!("{}", x))?;
 
-      println!("{result}");
+        println!("{result}");
 
-
-      Ok(())
+        Ok(())
     }
 
     #[test]
@@ -940,8 +935,6 @@ mod tests {
         let result = parse_candid(data)?;
         println!("{result}");
         let _v: Value = serde_json::from_str(&result).map_err(|x| format!("{}", x))?;
-
-
 
         Ok(())
     }

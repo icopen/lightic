@@ -34,7 +34,7 @@ export class ReplicaContext {
 
     this.canisters['aaaaa-aa'] = new ManagementCanister(this)
 
-    this.maxCanisterNumber = 90
+    this.maxCanisterNumber = 80
     this.freeCanisters = 30
 
     // this.msg_log = []

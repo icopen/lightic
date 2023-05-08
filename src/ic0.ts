@@ -104,6 +104,10 @@ export class Ic0 {
         }
     }
 
+    canister_cycle_balance(cntx: CanisterState): bigint {
+        return cntx.cycles
+    }
+
     // Called from canister, info about part of response
     msg_reply_data_append(cntx: CanisterState, src: number, size: number): void {
         const view = new Uint8Array(cntx.memory.buffer, src, size)
@@ -140,6 +144,20 @@ export class Ic0 {
 
             cntx.message.rejectionMessage = msg
         }
+    }
+
+    msg_cycles_accept(cntx: CanisterState, maxAmount: bigint): bigint {
+        if (cntx.message === undefined) return 0n
+
+        let amount = maxAmount
+        if (amount > cntx.message.cycles) {
+            amount = cntx.message.cycles
+        }
+
+        cntx.message.cycles -= amount
+        cntx.cycles += BigInt(amount)
+        
+        return amount
     }
 
     call_new(
@@ -192,16 +210,11 @@ export class Ic0 {
         ic0log('call_data_append: %o %o', src, size)
     }
 
-    // listAllProperties(o: object): any {
-    //   let objectToInspect
-    //   let result: string[] = []
-
-    //   for (objectToInspect = o; objectToInspect !== null; objectToInspect = Object.getPrototypeOf(objectToInspect)) {
-    //     result = result.concat(Object.getOwnPropertyNames(objectToInspect))
-    //   }
-
-    //   return result
-    // }
+    call_cycles_add(cntx: CanisterState, amount: bigint): void {
+        if (cntx.newMessage !== undefined) {
+            cntx.newMessage.cycles += amount
+        }
+    }
 
     call_perform(cntx: CanisterState): number {
         if (cntx.newMessage == null) return 1

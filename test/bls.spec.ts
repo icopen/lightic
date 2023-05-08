@@ -6,6 +6,8 @@ import { Bls } from '../src/bls'
 
 describe('BLS 12 381', function () {
     it('sign message', async function () {
+        console.profile()
+
         const bls = new Bls()
         await bls.init()
 
@@ -16,5 +18,7 @@ describe('BLS 12 381', function () {
         const verify = await blsVerify(bls.publicKey, new Uint8Array(sign), message)
         console.log("verified " + verify)
         assert.isTrue(verify)
+
+        console.profileEnd()
     })
 })

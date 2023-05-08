@@ -142,9 +142,20 @@ export class WasmCanister implements Canister {
 
       this.state.args_buffer = msg.result
       this.state.reply_size = 0
+      try {
+        fun(replyEnv)
+        msg.status = CallStatus.Ok
+      } catch (e) {
+        msg.status = CallStatus.Error
+        msg.rejectionCode = RejectionCode.CanisterError
+        msg.rejectionMessage = new TextEncoder().encode(e.message)
 
-      fun(replyEnv)
-      msg.status = CallStatus.Ok
+        msg.replyContext.status = CallStatus.Error
+        msg.replyContext.rejectionCode = RejectionCode.CanisterError
+        msg.replyContext.rejectionMessage = new TextEncoder().encode("ReplyCallback: "+e.message)
+
+        log('Error on ReplyCallback of {}', e)
+      }
     } else if (msg.type === CallType.RejectCallback) {
       const table = this.instance.exports.table as WebAssembly.Table
 
@@ -154,9 +165,20 @@ export class WasmCanister implements Canister {
 
       this.state.args_buffer = msg.result
       this.state.reply_size = 0
+      try {
+        fun(replyEnv)
+        msg.status = CallStatus.Ok
+      } catch (e) {
+        msg.status = CallStatus.Error
+        msg.rejectionCode = RejectionCode.CanisterError
+        msg.rejectionMessage = new TextEncoder().encode(e.message)
 
-      fun(replyEnv)
-      msg.status = CallStatus.Ok
+        msg.replyContext.status = CallStatus.Error
+        msg.replyContext.rejectionCode = RejectionCode.CanisterError
+        msg.replyContext.rejectionMessage = new TextEncoder().encode("RejectCallback: "+e.message)
+
+        log('Error on RejectCallback of {}', e)
+      }
     } else {
       const method = msg.getMethodName()
       const func = this.instance.exports[method] as any
@@ -194,14 +216,14 @@ export class WasmCanister implements Canister {
     }
 
     // If call was an query, revert canister state
-    if (msg.type === CallType.Query) {
+    if (msg.type === CallType.Query || msg.status === CallStatus.Error) {
       new Uint8Array(this.state.memory.buffer).set(new Uint8Array(this.state.memoryCopy))
+    }
 
-      if (msg.status === CallStatus.Processing) {
-        msg.status = CallStatus.Error
-        msg.rejectionCode = RejectionCode.CanisterError
-        msg.rejectionMessage = new TextEncoder().encode('Query call trapped')
-      }
+    if (msg.status === CallStatus.Processing) {
+      msg.status = CallStatus.Error
+      msg.rejectionCode = RejectionCode.CanisterError
+      msg.rejectionMessage = new TextEncoder().encode('Invalid processing, no response')
     }
   }
 

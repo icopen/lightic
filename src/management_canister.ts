@@ -29,6 +29,13 @@ interface ProvisionalResult {
   canister_id: Principal
 }
 
+class CustomError implements Error {
+  name: string
+  message: string
+  stack?: string | undefined
+  code: number
+}
+
 export class ManagementCanister implements Canister {
   private context: ReplicaContext
 
@@ -80,7 +87,7 @@ export class ManagementCanister implements Canister {
               msg.status = CallStatus.Ok
             } catch (e) {
               msg.status = CallStatus.Error
-              msg.rejectionCode = RejectionCode.CanisterError
+              msg.rejectionCode = e.code ?? RejectionCode.CanisterError
               msg.rejectionMessage = new TextEncoder().encode(e.message)
             }
           }
@@ -115,9 +122,17 @@ export class ManagementCanister implements Canister {
       params.id = args.specified_id[0].toString()
     }
 
-    const canister = this.context.create_canister(params)
+    try {
+      const canister = this.context.create_canister(params)
 
-    return { canister_id: canister.get_id() }
+      return { canister_id: canister.get_id() }
+    } catch (e) {
+      const err = new CustomError()
+      err.message = e.message
+      err.code = RejectionCode.DestinationInvalid
+
+      throw err
+    }
   }
 
   async install_code(msg: Message, arg: { arg: ArrayBuffer, wasm_module: ArrayBuffer, mode: CanisterInstallMode, canister_id: Principal }): Promise<void> {

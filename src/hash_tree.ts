@@ -7,6 +7,8 @@
 // }
 
 import { HashTree } from "@dfinity/agent"
+import { lebEncode } from "@dfinity/candid"
+import { bigIntToUint8Array } from "@dfinity/utils"
 
 // declare const enum NodeId {
 //     Empty = 0,
@@ -34,7 +36,7 @@ export class Tree {
         this.node = {nodes: []}
     }
 
-    insertValue(path: (Buffer | string)[], val: Buffer | string | number) {
+    insertValue(path: (Buffer | string)[], val: Buffer | string | number | bigint) {
         const node = this.traverseTree(this.node, path)
         
         if (typeof val === 'string') {
@@ -42,6 +44,11 @@ export class Tree {
         }
         if (typeof val === 'number') {
             val = Buffer.from([val])
+        }
+
+        if (typeof val === 'bigint') {
+            const tmp = lebEncode(val)
+            val = Buffer.from(tmp)
         }
         
         node.value = val

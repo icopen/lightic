@@ -68,7 +68,7 @@ export class Message {
 
   method: string
   args_raw?: ArrayBuffer
-  payment: number
+  cycles: bigint
 
   status: CallStatus
   rejectionCode: RejectionCode
@@ -85,6 +85,7 @@ export class Message {
 
   constructor (source: Partial<Message>) {
     this.status = CallStatus.New
+    this.cycles = 0n
     Object.assign(this, source)
   }
 
@@ -121,7 +122,6 @@ export class Message {
       sender: Principal.anonymous(),
       method: '__get_candid_interface_tmp_hack',
       args_raw: IDL.encode([], []),
-      payment: 0
     })
   }
 
@@ -135,7 +135,6 @@ export class Message {
       sender: Principal.fromText(sender.toString()),
       method: name,
       args_raw: args,
-      payment: 0
     })
   }
 
@@ -149,7 +148,6 @@ export class Message {
       sender: Principal.fromText(sender.toString()),
       method: name,
       args_raw: args,
-      payment: 0
     })
   }
 }

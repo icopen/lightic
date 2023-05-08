@@ -55,7 +55,7 @@ app.use(express.raw())
 app.use(express.json())
 
 app.all('/api/v2/*', function (req, res, next) {
-    // console.log(`[server]: URL Request: ${req.method} ${req.url}`)
+    console.log(`[server]: URL Request: ${req.method} ${req.url}`)
     // console.log('General Validations');
     next();
 });
@@ -304,6 +304,22 @@ app.post('/api/v2/canister/:canisterId/read_state', (req, res) => {
 
         const paths = data.content.paths
 
+        if (data.content.sender === undefined) {
+            res.status(400)
+            res.send('Missing sender')
+
+            return
+        }
+
+        if (paths === undefined || paths === null) {
+            res.status(400)
+            res.send('Missing paths')
+
+            return
+        }
+
+        const tree = new Tree();
+
         for (const path of paths) {
             const start = new TextDecoder().decode(path[0])
 
@@ -312,35 +328,34 @@ app.post('/api/v2/canister/:canisterId/read_state', (req, res) => {
                 const msgIdStr = toHex(msgId)
 
                 const msg = context.get_message(msgIdStr)
-                if (msg !== undefined && msg.result !== undefined) {
-                    if (msg.status === CallStatus.Ok) {
-                        const tree = new Tree();
-                        tree.insertValue(['request_status', msgId, 'reply'], Buffer.from(msg.result))
-                        tree.insertValue(['request_status', msgId, 'status'], 'replied')
-                        const treeHash = tree.getHashTree()
+                if (msg === undefined) {
+                    res.status(404)
+                    res.send("Message not found")
 
-                        const resp = await getReadResponse(bls, treeHash)
+                    return
+                }
 
-                        res.send(resp)
-                    } else if (msg.status === CallStatus.Error) {
-                        const tree = new Tree();
-                        tree.insertValue(['request_status', msgId, 'reject_code'], msg.rejectionCode)
-                        if (msg.rejectionMessage !== null && msg.rejectionMessage !== undefined) {
-                            tree.insertValue(['request_status', msgId, 'reject_message'], Buffer.from(msg.rejectionMessage))
-                        }
-                        tree.insertValue(['request_status', msgId, 'status'], 'rejected')
-                        const treeHash = tree.getHashTree()
-
-                        const resp = await getReadResponse(bls, treeHash)
-
-                        res.send(resp)
-                    } else {
-                        console.log("Unsupported request for status for message with status: " + msg.status)
-                        res.send({})
+                if (msg.status === CallStatus.Ok) {
+                    tree.insertValue(['request_status', msgId, 'reply'], Buffer.from(msg.result ?? new Uint8Array(0)))
+                    tree.insertValue(['request_status', msgId, 'status'], 'replied')
+                } else if (msg.status === CallStatus.Error) {
+                    tree.insertValue(['request_status', msgId, 'reject_code'], msg.rejectionCode)
+                    if (msg.rejectionMessage !== null && msg.rejectionMessage !== undefined) {
+                        tree.insertValue(['request_status', msgId, 'reject_message'], Buffer.from(msg.rejectionMessage))
                     }
+                    tree.insertValue(['request_status', msgId, 'status'], 'rejected')
+                } else {
+                    console.log("Unsupported request for status for message with status: " + msg.status)
                 }
             }
         }
+
+        // Every tree will have time entry
+        tree.insertValue(['time'], process.hrtime.bigint())
+
+        const treeHash = tree.getHashTree()
+        const resp = await getReadResponse(bls, treeHash)
+        res.send(resp)
     })
 });
 
