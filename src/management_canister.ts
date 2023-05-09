@@ -25,7 +25,11 @@ interface ProvisionalArgs {
   specified_id: string[]
 }
 
-interface ProvisionalResult {
+// interface CreateCanisterArgs {
+//   settings: CanisterSettings[],
+// }
+
+interface CanisterCreateResult {
   canister_id: Principal
 }
 
@@ -95,11 +99,11 @@ export class ManagementCanister implements Canister {
     }
 
     else {
-      console.log(`Invalid function ${msg.method}`)
+      console.log(`Management Canister: Invalid function ${msg.method}`)
 
       msg.status = CallStatus.Error
       msg.rejectionCode = RejectionCode.CanisterReject
-      msg.rejectionMessage = new TextEncoder().encode(`Invalid function ${msg.method}`)
+      msg.rejectionMessage = new TextEncoder().encode(`Management Canister: Invalid function ${msg.method}`)
     }
 
   }
@@ -112,7 +116,27 @@ export class ManagementCanister implements Canister {
     return result
   }
 
-  provisional_create_canister_with_cycles(msg: Message, args: ProvisionalArgs | null): ProvisionalResult {
+  // create_canister(msg: Message, args: CreateCanisterArgs | null): CanisterCreateResult {
+  create_canister(msg: Message): CanisterCreateResult {
+    const params: InstallCanisterArgs = {
+      caller: msg.sender,
+    }
+
+    try {
+      const canister = this.context.create_canister(params) as WasmCanister
+      canister.state.cycles = msg.cycles
+
+      return { canister_id: canister.get_id() }
+    } catch (e) {
+      const err = new CustomError()
+      err.message = e.message
+      err.code = RejectionCode.DestinationInvalid
+
+      throw err
+    }
+  }
+
+  provisional_create_canister_with_cycles(msg: Message, args: ProvisionalArgs | null): CanisterCreateResult {
     const params: InstallCanisterArgs = {
       caller: msg.sender,
     }
@@ -122,7 +146,8 @@ export class ManagementCanister implements Canister {
     }
 
     try {
-      const canister = this.context.create_canister(params)
+      const canister = this.context.create_canister(params) as WasmCanister
+      canister.state.cycles = 10_000_000_000n
 
       return { canister_id: canister.get_id() }
     } catch (e) {

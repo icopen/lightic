@@ -127,6 +127,8 @@ export class Ic0 {
             ic0log(cntx.message.id + ' ' + cntx.message.method)
             cntx.message.status = CallStatus.Ok
             cntx.message.result = cntx.reply_buffer.subarray(0, cntx.reply_size)
+        } else {
+            debugger;
         }
     }
 
@@ -213,6 +215,13 @@ export class Ic0 {
     call_cycles_add(cntx: CanisterState, amount: bigint): void {
         if (cntx.newMessage !== undefined) {
             cntx.newMessage.cycles += amount
+        }
+    }
+
+    call_cycles_add128(cntx: CanisterState, amountHigh: bigint, amountLow: bigint): void {
+        if (amountHigh > 0n) throw new Error('Amount high is not implemented in call_cycles_add128!')
+        if (cntx.newMessage !== undefined) {
+            cntx.newMessage.cycles += amountLow
         }
     }
 

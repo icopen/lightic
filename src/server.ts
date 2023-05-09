@@ -381,7 +381,6 @@ app.get('/api/v2/status', (req, res) => {
     const tagged = new Tagged(55799, status);
 
     const serializedAsBuffer = cbor.encode(tagged);
-    fs.writeFileSync('status_test', serializedAsBuffer)
 
     res.send(serializedAsBuffer);
 });

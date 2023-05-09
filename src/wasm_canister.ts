@@ -205,6 +205,13 @@ export class WasmCanister implements Canister {
 
       try {
         func()
+
+        //Before deciding if this message has failed, process all outstanding messages
+        await this.state.replica.process_messages()
+        
+        if (msg.type === CallType.Init) {
+          msg.status = CallStatus.Ok
+        }
       } catch (e) {
         msg.status = CallStatus.Error
         msg.rejectionCode = RejectionCode.CanisterError
