@@ -1,22 +1,5 @@
-// enum TreeLabels {
-//     Empty = 0,
-//     Fork = 1,
-//     Labeled = 2,
-//     Leaf = 3,
-//     Pruned = 4,
-// }
-
 import { HashTree } from "@dfinity/agent"
 import { lebEncode } from "@dfinity/candid"
-import { bigIntToUint8Array } from "@dfinity/utils"
-
-// declare const enum NodeId {
-//     Empty = 0,
-//     Fork = 1,
-//     Labeled = 2,
-//     Leaf = 3,
-//     Pruned = 4
-// }
 
 interface TreeLabel {
     name: ArrayBuffer,

@@ -164,9 +164,11 @@ export class MockAgent implements Agent {
     return this.rootKey ?? new Uint8Array(133)
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   invalidateIdentity? (): void {
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars
   replaceIdentity? (identity: Identity): void {
   }
 }

@@ -9,7 +9,7 @@ const ic0log = log.extend('ic0')
 
 
 export class Ic0 {
-    public getImports(state: CanisterState, importList: string[]): any {
+    public getImports(state: CanisterState, importList: string[]) {
         const importObject = {}
 
         for (const item of importList) {
@@ -229,7 +229,8 @@ export class Ic0 {
         return 0
     }
 
-    stable64_size(cntx: CanisterState): bigint {
+    // stable64_size(cntx: CanisterState): bigint {
+    stable64_size(): bigint {
         return 0n
     }
 
@@ -240,17 +241,20 @@ export class Ic0 {
         ic0log('certified_data_set: %o', cntx.certified_data)
     }
 
-    time(cntx: CanisterState): bigint {
+    // time(cntx: CanisterState): bigint {
+    time(): bigint {
         const t = process.hrtime.bigint()
         ic0log('time: %o', t)
         return t
     }
 
-    global_timer_set(cntx: CanisterState, timestamp: bigint): bigint {
+    // global_timer_set(cntx: CanisterState, timestamp: bigint): bigint {
+    global_timer_set(): bigint {
         return 0n
     }
 
-    performance_counter(cntx: CanisterState, counterType: number): bigint {
+    // performance_counter(cntx: CanisterState, counterType: number): bigint {
+    performance_counter(): bigint {
         return 0n
     }
 

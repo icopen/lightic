@@ -82,7 +82,7 @@ export class WasmCanister implements Canister {
     this.instance = await WebAssembly.instantiate(this.module, importObject)
     this.state.memory = this.instance.exports.memory as WebAssembly.Memory ?? this.instance.exports.mem as WebAssembly.Memory
 
-    if (initArgs !== undefined && initArgs !== null && initArgs.byteLength > 0) {
+    if (initArgs !== undefined && initArgs !== null && initArgs.byteLength > 0 && this.instance.exports['canister_init'] !== undefined) {
       // Initialize canister
       const msg = Message.init(this.id, sender, initArgs)
       await this.process_message(msg)
@@ -109,7 +109,7 @@ export class WasmCanister implements Canister {
     this.candid = candid
     this.idl = buildIdl(IDL, candid)
 
-    if (this.idl.init_args !== undefined && this.idl.init_args !== null && this.idl.init_args.length > 0) {
+    if (this.idl.init_args !== undefined && this.idl.init_args !== null && this.idl.init_args.length > 0 && this.instance.exports['canister_init'] !== undefined) {
       const args = IDL.encode(this.idl.init_args, initArgs)
 
       // Initialize canister

@@ -66,9 +66,8 @@ export class ManagementCanister implements Canister {
           const retTypes = field[1].retTypes
 
           if (msg.args_raw !== undefined) {
-            const args = IDL.decode(argTypes, msg.args_raw)
-
             try {
+              const args = IDL.decode(argTypes, msg.args_raw)
               let result = fun.apply(this, [msg, ...args])
 
               if (result instanceof Promise) {

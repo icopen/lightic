@@ -11,12 +11,20 @@ import { Tree } from './hash_tree';
 
 import { Bls } from './bls';
 
+import {Command} from 'commander'
+
+const program = new Command();
+program.option('--p, --port <number>','Specifies port on which http server will be started');
+program.parse(process.argv);
+
+const options = program.opts();
+
 const bls = new Bls()
 
 const context = new ReplicaContext();
 
 const app = express();
-const port = 8001;
+const port = options.port ?? 8001;
 // const port = 4943;
 
 interface CallContent {
