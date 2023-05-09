@@ -1,6 +1,6 @@
 {
   "name": "lightic",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "",
   "main": "lib/esm/index.js",
   "bin": "lib/esm/server.js",
