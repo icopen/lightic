@@ -178,7 +178,7 @@ export const idlFactory = ({ IDL }) => {
     'provisional_create_canister_with_cycles' : IDL.Func(
         [
           IDL.Record({
-            'settings' : canister_settings,
+            'settings' : IDL.Opt(canister_settings),
             'specified_id' : IDL.Opt(canister_id),
             'amount' : IDL.Opt(IDL.Nat),
           }),

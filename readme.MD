@@ -81,10 +81,10 @@ Below is a list of IC0 functions exposed to WASM module on IC environment. Not a
 - [x] - call_cycles_add
 - [ ] - call_cycles_add128
 - [x] - call_perform
-- [ ] - stable_size
-- [ ] - stable_grow
-- [ ] - stable_write
-- [ ] - stable_read
+- [x] - stable_size
+- [x] - stable_grow
+- [x] - stable_write
+- [x] - stable_read
 - [x] - stable64_size
 - [ ] - stable64_grow
 - [ ] - stable64_write
@@ -103,7 +103,7 @@ Below is a list of IC0 functions exposed to WASM module on IC environment. Not a
 - [x] - mint_cycles
 
 ## Management canister functions
-- [ ] - create_canister
+- [x] - create_canister
 - [ ] - update_settings
 - [x] - install_code
 - [ ] - uninstall_code
@@ -127,7 +127,7 @@ Below is a list of IC0 functions exposed to WASM module on IC environment. Not a
 - [x] - Mocha/Jest integration
 - [x] - Canister Memory Rollback
 - [x] - Update call support
-- [ ] - Stable Memory support
+- [x] - Stable Memory support
 - [x] - BLS Signatures
 - [x] - HTTP Server Implementation
 - [x] - npmjs package with helpers and runners

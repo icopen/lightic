@@ -58,6 +58,13 @@ pub fn test_instruction_counter() -> u64 {
 pub fn test_stable_size() -> u32 {
     stable_size()
 }
+
+#[update]
+#[candid_method(update)]
+pub fn test_stable_grow() -> Result<u32, String> {
+    stable_grow(1).map_err(|x| format!("{x}"))
+}
+
 #[query]
 #[candid_method(query)]
 pub fn test_stable64_size() -> u64 {

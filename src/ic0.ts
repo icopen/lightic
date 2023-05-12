@@ -127,8 +127,6 @@ export class Ic0 {
             ic0log(cntx.message.id + ' ' + cntx.message.method)
             cntx.message.status = CallStatus.Ok
             cntx.message.result = cntx.reply_buffer.subarray(0, cntx.reply_size)
-        } else {
-            debugger;
         }
     }
 
@@ -197,7 +195,6 @@ export class Ic0 {
         msg.rejectFun = rejectFun
         msg.rejectEnv = rejectEnv
 
-
         cntx.newMessage = msg
         cntx.newMessageReplySize = 0
 
@@ -232,15 +229,41 @@ export class Ic0 {
 
         cntx.newMessage.args_raw = args
 
+
+        if (cntx.message !== undefined) {
+            cntx.message.relatedMessages.push(cntx.newMessage)
+        }
+        
         // Store inter canister message to be processed after cntx call is completed
         cntx.replica.store_message(cntx.newMessage)
 
         return 0
     }
 
-    // stable64_size(cntx: CanisterState): bigint {
-    stable64_size(): bigint {
-        return 0n
+    stable_size(cntx: CanisterState): number {
+        return cntx.stableMemory.buffer.byteLength/65536 
+    }
+
+    stable_grow(cntx: CanisterState, newPages: number): number {
+        return cntx.stableMemory.grow(newPages)
+    }
+
+    stable_write(cntx: CanisterState, offset: number, src: number, size: number): void {
+        const stableView = new Uint8Array(cntx.stableMemory.buffer)
+        const canisterView = new Uint8Array(cntx.memory.buffer, src, size)
+
+        stableView.set(canisterView, offset)
+    }
+
+    stable_read(cntx: CanisterState, dst: number, offset: number, size: number): void {
+        const stableView = new Uint8Array(cntx.stableMemory.buffer, offset, size)
+        const canisterView = new Uint8Array(cntx.memory.buffer, dst, size)
+
+        canisterView.set(stableView)
+    }
+
+    stable64_size(cntx: CanisterState): bigint {
+        return BigInt(cntx.stableMemory.buffer.byteLength)/65536n 
     }
 
     certified_data_set(cntx: CanisterState, src: number, size: number): void {

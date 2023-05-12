@@ -30,6 +30,8 @@ export class CanisterState {
   newMessageReplySize: number
   certified_data: Uint8Array
 
+  stableMemory: WebAssembly.Memory
+
   constructor(item: Partial<CanisterState>) {
     this.certified_data = new Uint8Array(32)
 
@@ -38,6 +40,10 @@ export class CanisterState {
 
     this.newMessageArgs = new Uint8Array(102400)
     this.newMessageReplySize = 0
+
+    this.stableMemory = new WebAssembly.Memory({
+      initial: 0
+    })
 
     Object.assign(this, item)
   }
@@ -206,12 +212,10 @@ export class WasmCanister implements Canister {
       try {
         func()
 
-        //Before deciding if this message has failed, process all outstanding messages
-        await this.state.replica.process_messages()
-        
         if (msg.type === CallType.Init) {
           msg.status = CallStatus.Ok
         }
+
       } catch (e) {
         msg.status = CallStatus.Error
         msg.rejectionCode = RejectionCode.CanisterError
@@ -227,7 +231,8 @@ export class WasmCanister implements Canister {
       new Uint8Array(this.state.memory.buffer).set(new Uint8Array(this.state.memoryCopy))
     }
 
-    if (msg.status === CallStatus.Processing) {
+    //This is a problem only if there are no related messages, otherwise this is fine
+    if (msg.status === CallStatus.Processing && msg.relatedMessages.length === 0) {
       msg.status = CallStatus.Error
       msg.rejectionCode = RejectionCode.CanisterError
       msg.rejectionMessage = new TextEncoder().encode('Invalid processing, no response')

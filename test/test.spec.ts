@@ -73,6 +73,28 @@ describe('ic0', function () {
     })
   })
 
+  describe('stable memory', function () {
+    it('size', async function () {
+      const invokingPrincipal = Principal.fromText('7gaq2-4kttl-vtbt4-oo47w-igteo-cpk2k-57h3p-yioqe-wkawi-wz45g-jae')
+
+      const canister = await context.deploy('./spec_test/target/wasm32-unknown-unknown/release/spec_test.wasm')
+      const actor = context.getAgent(invokingPrincipal).getActor(canister)
+
+      const size = await actor.test_stable_size()
+      assert.equal(size, 0)
+    })
+    it('grow', async function () {
+      const invokingPrincipal = Principal.fromText('7gaq2-4kttl-vtbt4-oo47w-igteo-cpk2k-57h3p-yioqe-wkawi-wz45g-jae')
+
+      const canister = await context.deploy('./spec_test/target/wasm32-unknown-unknown/release/spec_test.wasm')
+      const actor = context.getAgent(invokingPrincipal).getActor(canister)
+
+      await actor.test_stable_grow()
+      const size = await actor.test_stable_size()
+      assert.equal(size, 1)
+    })
+  })
+
   describe('inter canister call', function () {
     it('should pass', async function () {
       const mintingPrincipal = Principal.fromText('3zjeh-xtbtx-mwebn-37a43-7nbck-qgquk-xtrny-42ujn-gzaxw-ncbzw-kqe')

@@ -12,6 +12,28 @@ import { CanisterInstallMode } from "@dfinity/agent"
 import { WasmCanister } from "./wasm_canister"
 import { loadWasm } from "./instrumentation"
 
+const { OptClass, Rec } = require("@dfinity/candid/lib/cjs/idl")
+const leb128_1 = require('@dfinity/candid/lib/cjs/utils/leb128')
+
+OptClass.prototype.decodeValue = function (b, t) {
+  const opt = this.checkType(t);
+  if (!(opt instanceof OptClass)) {
+    const type = Rec()
+    type._type = opt
+
+    return [this._type.decodeValue(b, type)];
+    // throw new Error('Not an option type');
+  }
+  switch ((0, leb128_1.safeReadUint8)(b)) {
+    case 0:
+      return [];
+    case 1:
+      return [this._type.decodeValue(b, opt._type)];
+    default:
+      throw new Error('Not an option value');
+  }
+}
+
 interface CanisterSettings {
   controllers: [],
   compute_allocation: [],

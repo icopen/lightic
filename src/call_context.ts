@@ -83,9 +83,12 @@ export class Message {
   rejectEnv: number
   replyContext: Message
 
+  relatedMessages: Message[]
+
   constructor (source: Partial<Message>) {
     this.status = CallStatus.New
     this.cycles = 0n
+    this.relatedMessages = []
     Object.assign(this, source)
   }
 
