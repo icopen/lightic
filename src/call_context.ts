@@ -59,7 +59,7 @@ export enum CallStatus {
   CanisterNotFound = 'CanisterNotFound'
 }
 export class Message {
-  id: string
+  id?: string
   type: CallType
   source: CallSource
 
@@ -67,14 +67,14 @@ export class Message {
   sender: Principal
 
   method: string
-  args_raw: ArrayBuffer | null
-  payment: number
+  args_raw?: ArrayBuffer
+  cycles: bigint
 
   status: CallStatus
   rejectionCode: RejectionCode
-  rejectionMessage: ArrayBuffer | null
+  rejectionMessage?: ArrayBuffer
 
-  result: ArrayBuffer | null
+  result?: ArrayBuffer
 
   //For inter canister calls
   replyFun: number
@@ -83,8 +83,12 @@ export class Message {
   rejectEnv: number
   replyContext: Message
 
+  relatedMessages: Message[]
+
   constructor (source: Partial<Message>) {
     this.status = CallStatus.New
+    this.cycles = 0n
+    this.relatedMessages = []
     Object.assign(this, source)
   }
 
@@ -106,8 +110,8 @@ export class Message {
     return new Message({
       type: CallType.Init,
       source: CallSource.Internal,
-      target: canister,
-      sender: sender,
+      target: Principal.fromText(canister.toString()),
+      sender: Principal.fromText(sender.toString()),
       method: '',
       args_raw: args
     })
@@ -117,39 +121,36 @@ export class Message {
     return new Message({
       type: CallType.Query,
       source: CallSource.Internal,
-      target: canister,
+      target: Principal.fromText(canister.toString()),
       sender: Principal.anonymous(),
       method: '__get_candid_interface_tmp_hack',
       args_raw: IDL.encode([], []),
-      payment: 0
     })
   }
 
   static query (
-    canister: Principal, name: string, caller: Principal, args: ArrayBuffer
+    canister: Principal, name: string, sender: Principal, args: ArrayBuffer
   ): Message {
     return new Message({
       type: CallType.Query,
       source: CallSource.Ingress,
-      target: canister,
-      sender: caller,
+      target: Principal.fromText(canister.toString()),
+      sender: Principal.fromText(sender.toString()),
       method: name,
       args_raw: args,
-      payment: 0
     })
   }
 
   static update (
-    canister: Principal, name: string, caller: Principal, args: ArrayBuffer
+    canister: Principal, name: string, sender: Principal, args: ArrayBuffer
   ): Message {
     return new Message({
       type: CallType.Update,
       source: CallSource.Ingress,
-      target: canister,
-      sender: caller,
+      target: Principal.fromText(canister.toString()),
+      sender: Principal.fromText(sender.toString()),
       method: name,
       args_raw: args,
-      payment: 0
     })
   }
 }

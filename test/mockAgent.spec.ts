@@ -13,6 +13,7 @@ const context = new TestContext()
 
 describe('Mock Agent', function () {
   it('get_id with @dfinity actor', async function () {
+    console.profile()
     const caller = Principal.anonymous()
     const canister = await context.deploy('./spec_test/target/wasm32-unknown-unknown/release/spec_test.wasm')
     const actor = Actor.createActor(canister.getIdlBuilder(), {
@@ -23,6 +24,7 @@ describe('Mock Agent', function () {
     const result = await actor.test_caller() as any[]
 
     assert.equal(caller.toString(), result.toString())
+    console.profileEnd()
   })
 
   it('test_inter_canister with @dfinity actor', async function () {

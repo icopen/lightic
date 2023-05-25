@@ -1,50 +1,127 @@
 import { IDL } from '@dfinity/candid'
 import { Principal } from '@dfinity/principal'
 import { buildIdl, type IdlResult } from './idl_builder'
-import { CallSource, CallStatus, CallType, Message, RejectionCode } from './call_context'
+import { CallStatus, CallType, Message, RejectionCode } from './call_context'
 import { type ReplicaContext } from './replica_context'
 import { parse_candid } from './wasm_tools/pkg/wasm_tools'
-import { CanisterStatus, Canister } from './canister'
+import { Canister } from './canister'
 import debug from 'debug'
+import { Ic0 } from './ic0'
 
 const log = debug('lightic:canister')
-const ic0log = log.extend('ic0')
+
+export class CanisterState {
+  replica: ReplicaContext
+  canister: Canister
+
+  memory: WebAssembly.Memory
+  memoryCopy: ArrayBuffer
+  cycles: bigint
+
+  message?: Message
+
+  args_buffer?: ArrayBuffer
+
+  reply_buffer: Uint8Array
+  reply_size: number
+
+  newMessage?: Message
+  newMessageArgs: Uint8Array
+  newMessageReplySize: number
+  certified_data: Uint8Array
+
+  stableMemory: WebAssembly.Memory
+
+  constructor(item: Partial<CanisterState>) {
+    this.certified_data = new Uint8Array(32)
+
+    this.reply_buffer = new Uint8Array(102400)
+    this.reply_size = 0
+
+    this.newMessageArgs = new Uint8Array(102400)
+    this.newMessageReplySize = 0
+
+    this.stableMemory = new WebAssembly.Memory({
+      initial: 0
+    })
+
+    Object.assign(this, item)
+  }
+}
+
 
 /// Implementation of Imports used by canisters according to The Internet Computer Interface Specification
 export class WasmCanister implements Canister {
-  private readonly replica: ReplicaContext
-  private readonly module: WebAssembly.Module
-  private instance: WebAssembly.Instance
-
-  private memory: WebAssembly.Memory
-
-  private readonly cycles: number
   private readonly id: Principal
-  private caller: Principal | null
+
+  readonly created: bigint
+
+  private module?: WebAssembly.Module
+  private instance: WebAssembly.Instance
 
   private candid: any
   private idl: IdlResult
 
-  private readonly reply_buffer: Uint8Array
-  private reply_size: number
-  private memoryCopy: ArrayBuffer
+  readonly state: CanisterState
+  readonly ic0: Ic0
 
-  private args_buffer: ArrayBuffer | null
-
-  private readonly certified_data: Uint8Array
-
-  private readonly status: CanisterStatus
-
-  private message: Message | null
-
-  constructor(replica: ReplicaContext, id: Principal, module: WebAssembly.Module) {
-    this.replica = replica
+  constructor(replica: ReplicaContext, id: Principal) {
     this.id = id
-    this.module = module
-    this.reply_buffer = new Uint8Array(102400)
-    this.certified_data = new Uint8Array(32)
-    this.reply_size = 0
-    this.message = null
+    this.created = process.hrtime.bigint()
+
+    this.ic0 = new Ic0()
+    this.state = new CanisterState({
+      canister: this,
+      replica: replica,
+      cycles: 1_000_000_000_000n
+    })
+  }
+
+  async install_module(code: WebAssembly.Module, initArgs: ArrayBuffer, sender: Principal) {
+    this.module = code
+
+    const imports = WebAssembly.Module.imports(code)
+    const importObject = this.ic0.getImports(this.state, imports.map(x => x.name))
+
+    if (this.module === undefined) return
+
+    this.instance = await WebAssembly.instantiate(this.module, importObject)
+    this.state.memory = this.instance.exports.memory as WebAssembly.Memory ?? this.instance.exports.mem as WebAssembly.Memory
+
+    if (initArgs !== undefined && initArgs !== null && initArgs.byteLength > 0 && this.instance.exports['canister_init'] !== undefined) {
+      // Initialize canister
+      const msg = Message.init(this.id, sender, initArgs)
+      await this.process_message(msg)
+    }
+  }
+
+  async install_module_candid(code: WebAssembly.Module, initArgs: any, sender: Principal, candidSpec?: string) {
+    this.module = code
+
+    const imports = WebAssembly.Module.imports(code)
+    const importObject = this.ic0.getImports(this.state, imports.map(x => x.name))
+
+    if (this.module === undefined) return
+
+    this.instance = await WebAssembly.instantiate(this.module, importObject)
+    this.state.memory = this.instance.exports.memory as WebAssembly.Memory ?? this.instance.exports.mem as WebAssembly.Memory
+
+    if (candidSpec === undefined) {
+      candidSpec = await this.get_candid()
+    }
+
+    const jsonCandid = parse_candid(candidSpec)
+    const candid = JSON.parse(jsonCandid)
+    this.candid = candid
+    this.idl = buildIdl(IDL, candid)
+
+    if (this.idl.init_args !== undefined && this.idl.init_args !== null && this.idl.init_args.length > 0 && this.instance.exports['canister_init'] !== undefined) {
+      const args = IDL.encode(this.idl.init_args, initArgs)
+
+      // Initialize canister
+      const msg = Message.init(this.id, sender, args)
+      await this.process_message(msg)
+    }
   }
 
   get_id(): Principal {
@@ -55,156 +132,11 @@ export class WasmCanister implements Canister {
     return this.instance
   }
 
-  /// Calls init function of a canister
-  async init(initArgs: any, sender: Principal, candidSpec?: string): Promise<void> {
-    const importObject = this.getImports()
-
-    this.instance = await WebAssembly.instantiate(this.module, importObject)
-    this.memory = this.instance.exports.memory as WebAssembly.Memory ?? this.instance.exports.mem as WebAssembly.Memory
-
-    if (candidSpec === undefined) {
-      candidSpec = this.get_candid()
-    }
-
-    const jsonCandid = parse_candid(candidSpec)
-    const candid = JSON.parse(jsonCandid)
-    this.candid = candid
-    this.idl = buildIdl(IDL, candid)
-
-    if (this.idl.init_args !== undefined && this.idl.init_args !== null && this.idl.init_args.length > 0) {
-      const args = IDL.encode(this.idl.init_args, initArgs)
-
-      // Initialize canister
-      const msg = Message.init(this.id, sender, args)
-      this.process_message(msg)
-    }
-  }
-
   getIdlBuilder(): IDL.InterfaceFactory {
     return (IDL) => buildIdl(IDL.IDL, this.candid).idl
   }
 
-  private getImports(): any {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const self = this
-    const importObject = {
-      ic0: {
-        msg_arg_data_size: (...args) =>
-          this.msg_arg_data_size.apply(self, args),
-        msg_arg_data_copy: (...args) =>
-          this.msg_arg_data_copy.apply(self, args),
-
-        msg_caller_size: (...args) => this.msg_caller_size.apply(self, args),
-        msg_caller_copy: (...args) => this.msg_caller_copy.apply(self, args),
-
-        msg_reject_code: (...args) =>
-          this.msg_reject_code.apply(self, args),
-        msg_reject_msg_size: (...args) =>
-          this.msg_reject_msg_size.apply(self, args),
-        msg_reject_msg_copy: (...args) =>
-          this.msg_reject_msg_copy.apply(self, args),
-
-        msg_reply_data_append: (...args) =>
-          this.msg_reply_data_append.apply(self, args),
-        msg_reply: (...args) => this.msg_reply.apply(self, args),
-        msg_reject: (...args) => this.msg_reject.apply(self, args),
-
-        msg_cycles_available: (...args) =>
-          this.not_implemented.apply(self, ['msg_cycles_available', ...args]),
-        msg_cycles_available128: (...args) =>
-          this.not_implemented.apply(self, [
-            'msg_cycles_available128',
-            ...args
-          ]),
-        msg_cycles_refunded: (...args) =>
-          this.not_implemented.apply(self, ['msg_cycles_refunded', ...args]),
-        msg_cycles_refunded128: (...args) =>
-          this.not_implemented.apply(self, ['msg_cycles_refunded128', ...args]),
-        msg_cycles_accept: (...args) =>
-          this.not_implemented.apply(self, ['msg_cycles_accept', ...args]),
-        msg_cycles_accept128: (...args) =>
-          this.not_implemented.apply(self, ['msg_cycles_accept128', ...args]),
-
-        canister_self_size: (...args) =>
-          this.canister_self_size.apply(self, args),
-        canister_self_copy: (...args) =>
-          this.canister_self_copy.apply(self, args),
-        canister_cycle_balance: (...args) =>
-          this.not_implemented.apply(self, ['canister_cycle_balance', ...args]),
-        canister_cycle_balance128: (...args) =>
-          this.not_implemented.apply(self, [
-            'canister_cycle_balance128',
-            ...args
-          ]),
-        canister_status: (...args) =>
-          this.not_implemented.apply(self, ['canister_status', ...args]),
-        canister_version: (...args) =>
-          this.not_implemented.apply(self, ['canister_version', ...args]),
-
-        msg_method_name_size: (...args) =>
-          this.not_implemented.apply(self, ['msg_method_name_size', ...args]),
-        msg_method_name_copy: (...args) =>
-          this.not_implemented.apply(self, ['msg_method_name_copy', ...args]),
-        accept_message: (...args) =>
-          this.not_implemented.apply(self, ['accept_message', ...args]),
-
-        call_new: (...args) =>
-          this.call_new.apply(self, args),
-        call_on_cleanup: (...args) =>
-          this.not_implemented.apply(self, ['call_on_cleanup', ...args]),
-        call_data_append: (...args) =>
-          this.call_data_append.apply(self, args),
-        call_cycles_add: (...args) =>
-          this.not_implemented.apply(self, ['call_cycles_add', ...args]),
-        call_cycles_add128: (...args) =>
-          this.not_implemented.apply(self, ['call_cycles_add128', ...args]),
-        call_perform: (...args) =>
-          this.call_perform.apply(self, args),
-
-        stable_size: (...args) =>
-          this.not_implemented.apply(self, ['stable_size', ...args]),
-        stable_grow: (...args) =>
-          this.not_implemented.apply(self, ['stable_grow', ...args]),
-        stable_write: (...args) =>
-          this.not_implemented.apply(self, ['stable_write', ...args]),
-        stable_read: (...args) =>
-          this.not_implemented.apply(self, ['stable_read', ...args]),
-        stable64_size: (...args) =>
-          this.stable64_size.apply(self, args),
-        stable64_grow: (...args) =>
-          this.not_implemented.apply(self, ['stable64_grow', ...args]),
-        stable64_write: (...args) =>
-          this.not_implemented.apply(self, ['stable64_write', ...args]),
-        stable64_read: (...args) =>
-          this.not_implemented.apply(self, ['stable64_read', ...args]),
-
-        certified_data_set: (...args) =>
-          this.certified_data_set.apply(self, args),
-        data_certificate_present: (...args) =>
-          this.not_implemented.apply(self, [
-            'data_certificate_present',
-            ...args
-          ]),
-        data_certificate_size: (...args) =>
-          this.not_implemented.apply(self, ['data_certificate_size', ...args]),
-        data_certificate_copy: (...args) =>
-          this.not_implemented.apply(self, ['data_certificate_copy', ...args]),
-
-        time: (...args) => this.time.apply(self, args),
-        global_timer_set: (...args) =>
-          this.global_timer_set.apply(self, ['global_timer_set', ...args]),
-        performance_counter: (...args) =>
-          this.performance_counter.apply(self, args),
-
-        debug_print: (...args) => this.debug_print.apply(self, args),
-        trap: (...args) => this.trap.apply(self, args)
-      }
-    }
-
-    return importObject
-  }
-
-  public process_message(msg: Message): void {
+  public async process_message(msg: Message): Promise<void> {
     msg.status = CallStatus.Processing
 
     if (msg.type === CallType.ReplyCallback) {
@@ -212,25 +144,47 @@ export class WasmCanister implements Canister {
 
       const replyEnv = msg.replyEnv
       const fun = table.get(msg.replyFun)
-      this.message = msg.replyContext
+      this.state.message = msg.replyContext
 
-      this.args_buffer = msg.result
-      this.reply_size = 0
+      this.state.args_buffer = msg.result
+      this.state.reply_size = 0
+      try {
+        fun(replyEnv)
+        msg.status = CallStatus.Ok
+      } catch (e) {
+        msg.status = CallStatus.Error
+        msg.rejectionCode = RejectionCode.CanisterError
+        msg.rejectionMessage = new TextEncoder().encode(e.message)
 
-      fun(replyEnv)
-      msg.status = CallStatus.Ok
+        msg.replyContext.status = CallStatus.Error
+        msg.replyContext.rejectionCode = RejectionCode.CanisterError
+        msg.replyContext.rejectionMessage = new TextEncoder().encode("ReplyCallback: "+e.message)
+
+        log('Error on ReplyCallback of {}', e)
+      }
     } else if (msg.type === CallType.RejectCallback) {
       const table = this.instance.exports.table as WebAssembly.Table
 
       const replyEnv = msg.rejectEnv
       const fun = table.get(msg.rejectFun)
-      this.message = msg.replyContext
+      this.state.message = msg.replyContext
 
-      this.args_buffer = msg.result
-      this.reply_size = 0
+      this.state.args_buffer = msg.result
+      this.state.reply_size = 0
+      try {
+        fun(replyEnv)
+        msg.status = CallStatus.Ok
+      } catch (e) {
+        msg.status = CallStatus.Error
+        msg.rejectionCode = RejectionCode.CanisterError
+        msg.rejectionMessage = new TextEncoder().encode(e.message)
 
-      fun(replyEnv)
-      msg.status = CallStatus.Ok
+        msg.replyContext.status = CallStatus.Error
+        msg.replyContext.rejectionCode = RejectionCode.CanisterError
+        msg.replyContext.rejectionMessage = new TextEncoder().encode("RejectCallback: "+e.message)
+
+        log('Error on RejectCallback of {}', e)
+      }
     } else {
       const method = msg.getMethodName()
       const func = this.instance.exports[method] as any
@@ -238,52 +192,61 @@ export class WasmCanister implements Canister {
       // Check if function was found in wasm, this should be 4 Canister Reject
       if (func === undefined) {
         msg.status = CallStatus.Error
-        throw new Error('Function not found ' + msg.method)
+        msg.rejectionCode = RejectionCode.DestinationInvalid
+        msg.rejectionMessage = new TextEncoder().encode('Function not found ' + method)
+
+        throw new Error('Function not found ' + method)
       }
 
       log(this.id.toString() + ': Calling ' + msg.method)
 
-      this.message = msg
+      this.state.message = msg
 
-      this.args_buffer = msg.args_raw
-      this.reply_size = 0
-
-      this.caller = msg.sender
+      this.state.args_buffer = msg.args_raw
+      this.state.reply_size = 0
 
       // Copy canister memory, for possible restore on trap
-      this.memoryCopy = new ArrayBuffer(this.memory.buffer.byteLength)
-      new Uint8Array(this.memoryCopy).set(new Uint8Array(this.memory.buffer))
+      this.state.memoryCopy = new ArrayBuffer(this.state.memory.buffer.byteLength)
+      new Uint8Array(this.state.memoryCopy).set(new Uint8Array(this.state.memory.buffer))
 
       try {
         func()
+
+        if (msg.type === CallType.Init) {
+          msg.status = CallStatus.Ok
+        }
+
       } catch (e) {
         msg.status = CallStatus.Error
+        msg.rejectionCode = RejectionCode.CanisterError
+        msg.rejectionMessage = new TextEncoder().encode(e.message)
+
         log('Error on execution of {} {}', method, e)
         throw e
       }
     }
 
     // If call was an query, revert canister state
-    if (msg.type === CallType.Query) {
-      new Uint8Array(this.memory.buffer).set(new Uint8Array(this.memoryCopy))
+    if (msg.type === CallType.Query || msg.status === CallStatus.Error) {
+      new Uint8Array(this.state.memory.buffer).set(new Uint8Array(this.state.memoryCopy))
     }
 
-    this.caller = null
+    //This is a problem only if there are no related messages, otherwise this is fine
+    if (msg.status === CallStatus.Processing && msg.relatedMessages.length === 0) {
+      msg.status = CallStatus.Error
+      msg.rejectionCode = RejectionCode.CanisterError
+      msg.rejectionMessage = new TextEncoder().encode('Invalid processing, no response')
+    }
   }
 
-  public get_candid(): string {
-    // const candidArgs = WebAssembly.Module.customSections(this.module, 'icp:private candid:args')
-    // const stable = WebAssembly.Module.customSections(this.module, 'icp:private motoko:stable-types')
-    // const compiler = WebAssembly.Module.customSections(this.module, 'icp:private motoko:compiler')
-
+  public async get_candid(): Promise<string> {
     let candidHackRaw: string | undefined
 
     try {
-      // log('Using candid hack if it exists')
       const msg = Message.candidHack(this.id)
-      this.process_message(msg)
+      await this.process_message(msg)
 
-      if (msg.result !== null) {
+      if (msg.result !== null && msg.result !== undefined) {
         const decoded = IDL.decode([IDL.Text], msg.result)
         candidHackRaw = decoded[0] as string
 
@@ -292,6 +255,10 @@ export class WasmCanister implements Canister {
       }
     } catch (e) {
       log('Error when trying to get candid via hack')
+    }
+
+    if (this.module === undefined) {
+      throw new Error('Cannot get candid for canister with no module installed')
     }
 
     const candidRaw = WebAssembly.Module.customSections(this.module, 'icp:public candid:service')
@@ -313,239 +280,4 @@ export class WasmCanister implements Canister {
     return this.idl.init_args
   }
 
-  // Return length of args, called from canister
-  msg_arg_data_size(): number {
-    ic0log('msg_arg_data_size: %o', this.args_buffer?.byteLength)
-    return this.args_buffer?.byteLength ?? 0
-  }
-
-  // Copy args data to WASM memory, called from canister
-  msg_arg_data_copy(dst: number, offset: number, size: number): void {
-    const view = new Uint8Array(this.memory.buffer)
-    ic0log('msg_arg_data_copy: %o %o %o', dst, offset, size)
-
-    if (this.args_buffer !== null) {
-      for (let i = 0; i < size; i++) {
-        const val = this.args_buffer[i]
-        view[dst + i] = val
-      }
-    }
-  }
-
-  // Return length of args, called from canister
-  msg_caller_size(): number | undefined {
-    return this.caller?.toUint8Array().byteLength
-  }
-
-  // Copy args data to WASM memory, called from canister
-  msg_caller_copy(dst: number, offset: number, size: number): void {
-    const view = new Uint8Array(this.memory.buffer)
-
-    if (this.caller !== null) {
-      const buf = this.caller.toUint8Array()
-
-      for (let i = 0; i < size; i++) {
-        const val = buf[i]
-        view[dst + i] = val
-      }
-    }
-  }
-
-  msg_reject_code(): number {
-    return this.message?.rejectionCode ?? 0
-  }
-
-  msg_reject_msg_size(): number {
-    return this.message?.rejectionMessage?.byteLength ?? 0
-  }
-
-  // Copy rejection msg data to WASM memory, called from canister
-  msg_reject_msg_copy(dst: number, offset: number, size: number): void {
-    if (this.message === null) return
-    if (this.message.rejectionMessage === null) return
-
-    const view = new Uint8Array(this.memory.buffer)
-
-    if (this.caller !== null) {
-      const buf = new Uint8Array(this.message.rejectionMessage)
-
-      for (let i = 0; i < size; i++) {
-        const val = buf[i]
-        view[dst + i] = val
-      }
-    }
-  }
-
-
-  // Return length of args, called from canister
-  canister_self_size(): number {
-    return this.id.toUint8Array().byteLength
-  }
-
-  // Copy args data to WASM memory, called from canister
-  canister_self_copy(dst: number, offset: number, size: number): void {
-    const view = new Uint8Array(this.memory.buffer)
-
-    const buf = this.id.toUint8Array()
-
-    for (let i = 0; i < size; i++) {
-      const val = buf[i]
-      view[dst + i] = val
-    }
-  }
-
-  // Called from canister, info about part of response
-  msg_reply_data_append(src: number, size: number): void {
-    const view = new Uint8Array(this.memory.buffer, src, size)
-
-    this.reply_buffer.set(view, this.reply_size)
-    this.reply_size += size
-  }
-
-  msg_reply(): void {
-    ic0log('msg_reply')
-
-    if (this.message !== null) {
-      ic0log(this.message.id + ' ' + this.message.method)
-      this.message.status = CallStatus.Ok
-      this.message.result = this.reply_buffer.subarray(0, this.reply_size)
-    }
-  }
-
-  msg_reject(src: number, size: number): void {
-    ic0log('msg_reject')
-
-    if (this.message !== null) {
-      // ic0log(this.message.id + ' ' + this.message.method)
-      this.message.status = CallStatus.Error
-      this.message.rejectionCode = RejectionCode.CanisterReject
-
-      const view = new Uint8Array(this.memory.buffer, src, size)
-      this.reply_buffer.set(view, size)
-      const msg = this.reply_buffer.subarray(0, size)
-    }
-  }
-
-  call_new(
-    calleeSrc: number,
-    calleeSize: number,
-    nameSrc: number,
-    nameSize: number,
-    replyFun: number,
-    replyEnv: number,
-    rejectFun: number,
-    rejectEnv: number): void {
-    const msg = new Message({
-      type: CallType.Update,
-      source: CallSource.InterCanister
-    })
-
-    msg.sender = this.id
-
-    const view = new Uint8Array(this.memory.buffer, calleeSrc, calleeSize)
-    const target = Principal.fromUint8Array(view)
-
-    msg.target = target
-
-    const view2 = new Uint8Array(this.memory.buffer, nameSrc, nameSize)
-    const name = new TextDecoder().decode(view2)
-
-    msg.method = name
-
-    if (this.message !== null) {
-      msg.replyContext = this.message
-    }
-    msg.replyFun = replyFun
-    msg.replyEnv = replyEnv
-    msg.rejectFun = rejectFun
-    msg.rejectEnv = rejectEnv
-
-    this.reply_size = 0
-
-    this.message = msg
-
-    ic0log('call_new: %o %o', target.toString(), name)
-  }
-
-  call_data_append(src: number, size: number): void {
-    const view = new Uint8Array(this.memory.buffer, src, size)
-
-    this.reply_buffer.set(view, this.reply_size)
-    this.reply_size += size
-    ic0log('call_data_append: %o %o', src, size)
-  }
-
-  listAllProperties(o: object): any {
-    let objectToInspect
-    let result: string[] = []
-
-    for (objectToInspect = o; objectToInspect !== null; objectToInspect = Object.getPrototypeOf(objectToInspect)) {
-      result = result.concat(Object.getOwnPropertyNames(objectToInspect))
-    }
-
-    return result
-  }
-
-  call_perform(): number {
-    if (this.message == null) return 1
-
-    const args = this.reply_buffer.subarray(0, this.reply_size)
-
-    this.message.args_raw = args
-
-    // Store inter canister message to be processed after this call is completed
-    this.replica.store_message(this.message)
-
-    return 0
-  }
-
-  stable64_size(): bigint {
-    return 0n
-  }
-
-  certified_data_set(src: number, size: number): void {
-    const view = new Uint8Array(this.memory.buffer, src, size)
-
-    this.certified_data.set(view, 0)
-    ic0log('certified_data_set: %o', this.certified_data)
-  }
-
-  time(): bigint {
-    const t = process.hrtime.bigint()
-    ic0log('time: %o', t)
-    return t
-  }
-
-  global_timer_set(timestamp: bigint): bigint {
-    return 0n
-  }
-
-  performance_counter(counterType: number): bigint {
-    return 0n
-  }
-
-  debug_print(src: number, size: number): void {
-    const data = this.memory.buffer.slice(src, src + size)
-    const text = new TextDecoder().decode(data)
-
-    log('Canister debug: %s', text)
-  }
-
-  trap(src: number, size: number): void {
-    const data = this.memory.buffer.slice(src, src + size)
-    const text = new TextDecoder().decode(data)
-
-    log('Canister trap!: %s', text)
-
-    // Revert canister memory to pre trap
-    log('Reverting memory')
-    const view = new Uint8Array(this.memory.buffer)
-    view.set(new Uint8Array(this.memoryCopy))
-
-    throw new Error('Canister trap!: ' + text)
-  }
-
-  not_implemented(name, args): void {
-    log('IC method not_implemented! %s', name)
-  }
 }

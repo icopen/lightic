@@ -1,8 +1,9 @@
 {
   "name": "lightic",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "",
   "main": "lib/esm/index.js",
+  "bin": "lib/esm/server.js",
   "scripts": {
     "lint": "yarn prettier --check && yarn eslint",
     "lint:fix": "yarn prettier --write && yarn eslint --fix",
@@ -16,23 +17,24 @@
     "prePublish": "yarn buildWasmTools && yarn build && yarn copyWasmTools"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@types/chai": "^4.3.4",
     "@types/debug": "^4.1.7",
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.13.0",
-    "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.59.2",
+    "@typescript-eslint/parser": "^5.59.2",
     "chai": "^4.3.7",
-    "eslint": "^8.0.1",
-    "eslint-config-standard-with-typescript": "^34.0.0",
+    "eslint": "^8.39.0",
+    "eslint-config-standard-with-typescript": "^34.0.1",
     "eslint-plugin-import": "^2.25.2",
     "eslint-plugin-n": "^15.0.0",
     "eslint-plugin-promise": "^6.0.0",
     "mocha": "^10.2.0",
     "prettier": "^2.8.4",
     "ts-node": "^10.9.1",
-    "typescript": "*"
+    "typescript": "^5.0.4"
   },
   "dependencies": {
     "@dfinity/agent": "^0.15.4",
@@ -40,8 +42,10 @@
     "@dfinity/nns": "^0.14.0",
     "@dfinity/principal": "^0.15.3",
     "@dfinity/utils": "^0.0.12",
-    "cbor-x": "^1.5.1",
+    "cbor": "^8.1.0",
+    "commander": "^10.0.1",
     "debug": "^4.3.4",
+    "express": "^4.18.2",
     "pako": "^2.1.0"
   },
   "files": [

@@ -36,7 +36,7 @@ export class MockActor {
     if (idl !== undefined) {
       service = idl({ IDL })
     } else {
-      let canister = agent.replica.get_canister(canister_id);
+      const canister = agent.replica.get_canister(canister_id);
       service = canister.get_idl()
     }
     // const service = idl ?? canister.get_idl()

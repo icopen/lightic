@@ -1,8 +1,9 @@
 {
     "mochaExplorer.files": "test/**/*.ts",
     "mochaExplorer.require": "ts-node/register",
-    "mochaExplorer.env": { "DEBUG": "lightic*" },
+    "mochaExplorer.env": { "DEBUG": "lightic*", "NODE": "--cpu-prof" },
     "cSpell.words": [
+        "Cbor",
         "dfinity",
         "ecid",
         "icrc",

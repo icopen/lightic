@@ -134,7 +134,7 @@
 // use std::collections::BTreeMap;
 // use std::convert::TryFrom;
 
-use wasmparser::{ExternalKind, Export};
+use wasmparser::{Export, ExternalKind};
 
 use crate::wasm_transform::Module;
 
@@ -560,14 +560,14 @@ const TABLE_STR: &str = "table";
 //
 // Returns the new module or panics in debug mode if a symbol is not reserved.
 #[doc(hidden)] // pub for usage in tests
-// pub fn export_additional_symbols<'a>(
-//     mut module: Module<'a>,
-//     export_module_data: &ExportModuleData,
-//     extra_data: &'a mut Option<Vec<u8>>,
-//     wasm_native_stable_memory: FlagStatus,
-//     stable_memory_bytemap_index: u32,
-// ) -> Module<'a> {
-//     // push function to decrement the instruction counter
+               // pub fn export_additional_symbols<'a>(
+               //     mut module: Module<'a>,
+               //     export_module_data: &ExportModuleData,
+               //     extra_data: &'a mut Option<Vec<u8>>,
+               //     wasm_native_stable_memory: FlagStatus,
+               //     stable_memory_bytemap_index: u32,
+               // ) -> Module<'a> {
+               //     // push function to decrement the instruction counter
 
 //     let func_type = Type::Func(FuncType::new([ValType::I32], [ValType::I32]));
 

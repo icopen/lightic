@@ -95,7 +95,7 @@ pub fn print_type(ty: &Type) -> String {
                 str.push_str("{ \"Tuple\":");
                 // str.push_str(&print_array(r));
                 str.push_str(&print_array(&r.iter().map(|f| f.ty.clone()).collect()));
-                str.push_str("}");
+                str.push('}');
 
                 // str.push_str(&format!("{{ \"Tuple\": {} }}", print_fields(r)));
             } else {

@@ -14,7 +14,6 @@ The replica mock is run directly in node.js environment (also works with all bro
 
 # How to start using
 
-
 ```
 npm i lightic
 ```
@@ -55,37 +54,37 @@ Below is a list of IC0 functions exposed to WASM module on IC environment. Not a
 - [x] - msg_arg_data_copy
 - [x] - msg_caller_size
 - [x] - msg_caller_copy
-- [ ] - msg_reject_code
-- [ ] - msg_reject_msg_size
-- [ ] - msg_reject_msg_copy
+- [x] - msg_reject_code
+- [x] - msg_reject_msg_size
+- [x] - msg_reject_msg_copy
 - [x] - msg_reply_data_append
 - [x] - msg_reply
-- [ ] - msg_reject
+- [x] - msg_reject
 - [ ] - msg_cycles_available
 - [ ] - msg_cycles_available128
 - [ ] - msg_cycles_refunded
 - [ ] - msg_cycles_refunded128
-- [ ] - msg_cycles_accept
+- [x] - msg_cycles_accept
 - [ ] - msg_cycles_accept128
 - [x] - canister_self_size
 - [x] - canister_self_copy
-- [ ] - canister_cycle_balance
+- [x] - canister_cycle_balance
 - [ ] - canister_cycle_balance128
 - [ ] - canister_status
 - [ ] - canister_version
 - [ ] - msg_method_name_size
 - [ ] - msg_method_name_copy
 - [ ] - accept_message
-- [ ] - call_new
+- [x] - call_new
 - [ ] - call_on_cleanup
-- [ ] - call_data_append
-- [ ] - call_cycles_add
+- [x] - call_data_append
+- [x] - call_cycles_add
 - [ ] - call_cycles_add128
-- [ ] - call_perform
-- [ ] - stable_size
-- [ ] - stable_grow
-- [ ] - stable_write
-- [ ] - stable_read
+- [x] - call_perform
+- [x] - stable_size
+- [x] - stable_grow
+- [x] - stable_write
+- [x] - stable_read
 - [x] - stable64_size
 - [ ] - stable64_grow
 - [ ] - stable64_write
@@ -95,10 +94,30 @@ Below is a list of IC0 functions exposed to WASM module on IC environment. Not a
 - [ ] - data_certificate_size
 - [ ] - data_certificate_copy
 - [x] - time
-- [ ] - global_timer_set
+- [x] - global_timer_set
 - [x] - performance_counter
 - [x] - debug_print
 - [x] - trap
+
+## Not documented but still relevant
+- [x] - mint_cycles
+
+## Management canister functions
+- [x] - create_canister
+- [ ] - update_settings
+- [x] - install_code
+- [ ] - uninstall_code
+- [ ] - canister_status
+- [ ] - stop_canister
+- [ ] - start_canisters
+- [ ] - delete_canister
+- [ ] - deposit_cycles
+- [x] - raw_rand
+- [ ] - ecdsa_public_key
+- [ ] - sign_with_ecdsa
+- [ ] - http_request
+- [x] - provisional_create_canister_with_cycles
+- [ ] - provisional_top_up_canister
 
 # TODO
 - [x] - Candid utils WASM-WASI module
@@ -108,9 +127,9 @@ Below is a list of IC0 functions exposed to WASM module on IC environment. Not a
 - [x] - Mocha/Jest integration
 - [x] - Canister Memory Rollback
 - [x] - Update call support
-- [ ] - Stable Memory support
-- [ ] - BLS Signatures
-- [ ] - HTTP Server Implementation
+- [x] - Stable Memory support
+- [x] - BLS Signatures
+- [x] - HTTP Server Implementation
 - [x] - npmjs package with helpers and runners
 
 
@@ -119,10 +138,10 @@ Below is a list of IC0 functions exposed to WASM module on IC environment. Not a
 - [ ] - Backup of wasm memory (normal and stable) for faster development cycles
 - [ ] - Log of all calls
 - [ ] - Support for other environments: local/dfx, production
-- [ ] - HTTP Calls support, HTTP Proxy
 - [ ] - Cycles usage counting per every call
 - [ ] - Mocking of messages (ingress, egress and xnet)
 - [ ] - Support for canister upgrades (preupgrade and postupgrade)
 - [ ] - Limit cycle usage on calls
 - [ ] - Limit message size to subnet settings, allow for different subnet settings
 - [ ] - Support for multiple subnets
+- [ ] - Full compliance ic-ref-test [https://github.com/dfinity/ic-hs#ic-ref-test-an-acceptance-test-suite]

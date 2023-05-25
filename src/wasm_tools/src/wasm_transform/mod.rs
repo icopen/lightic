@@ -117,13 +117,13 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::BinaryReaderError(err) => {
-                write!(f, "Error from wasmparser: {}", err)
+                write!(f, "Error from wasmparser: {err}")
             }
             Error::UnknownVersion(ver) => {
-                write!(f, "Unknown version: {}", ver)
+                write!(f, "Unknown version: {ver}")
             }
             Error::UnknownSection { section_id } => {
-                write!(f, "Unknown section: {}", section_id)
+                write!(f, "Unknown section: {section_id}")
             }
             Error::MissingFunctionEnd { func_range } => {
                 write!(
@@ -138,8 +138,7 @@ impl std::fmt::Display for Error {
             } => {
                 write!(
                     f,
-                    "Incorrect data count. Declared: {}, actual: {}",
-                    declared_count, actual_count
+                    "Incorrect data count. Declared: {declared_count}, actual: {actual_count}"
                 )
             }
             Error::InvalidConstExpr => {
@@ -152,15 +151,13 @@ impl std::fmt::Display for Error {
             } => {
                 write!(
                     f,
-                    "Incorrect code counts. Function section count: {}, code section declared count: {}, code section actual count: {}",
-                    function_section_count, code_section_declared_count, code_section_actual_count
+                    "Incorrect code counts. Function section count: {function_section_count}, code section declared count: {code_section_declared_count}, code section actual count: {code_section_actual_count}"
                 )
             }
             Error::PassiveElementSectionTypeNotFuncRef { ty } => {
                 write!(
                     f,
-                    "Passive elements in element section expected to be of type Func, found: {:?}",
-                    ty
+                    "Passive elements in element section expected to be of type Func, found: {ty:?}"
                 )
             }
             Error::MultipleStartSections => {
@@ -170,7 +167,7 @@ impl std::fmt::Display for Error {
                 write!(f, "Unexpected element type")
             }
             Error::InvalidMemoryReservedByte { func_range } => {
-                write!(f, "Found a `memory.*` instruction with an invalid reserved byte in function at {:?}", func_range)
+                write!(f, "Found a `memory.*` instruction with an invalid reserved byte in function at {func_range:?}")
             }
         }
     }
