@@ -13,7 +13,7 @@
     "build": "tsc --build ./src",
     "buildWasmTools": "cd ./src/wasm_tools && yarn build && cd ../../",
     "buildSpecTest": "cd ./spec_test && cargo build --target wasm32-unknown-unknown --release",
-    "copyWasmTools": "[ -d ./lib/esm/wasm_tools ] || mkdir ./lib/esm/wasm_tools && cp -r ./src/wasm_tools/pkg ./lib/esm/wasm_tools/pkg",
+    "copyWasmTools": "[ -d ./lib/esm/wasm_tools ] || mkdir ./lib/esm/wasm_tools && cp -r ./src/wasm_tools/pkg ./lib/esm/wasm_tools/pkg && rm ./lib/esm/wasm_tools/pkg/.gitignore",
     "prePublish": "yarn buildWasmTools && yarn build && yarn copyWasmTools"
   },
   "author": "",
