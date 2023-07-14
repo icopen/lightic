@@ -140,6 +140,9 @@ class IdlBuilder {
         case 'int':
           idl = IDL.Int
           break
+        case 'bool':
+          idl = IDL.Bool
+          break
         default:
           break
       }

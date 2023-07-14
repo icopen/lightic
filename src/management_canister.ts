@@ -73,6 +73,9 @@ export class ManagementCanister implements Canister {
     this.idl = idlFactory({ IDL })
     this.created = 0n
   }
+  get_module_hash(): Buffer | undefined {
+    throw new Error("Method not implemented.")
+  }
   getIdlBuilder(): InterfaceFactory {
     throw new Error("Method not implemented.")
   }
@@ -130,12 +133,14 @@ export class ManagementCanister implements Canister {
 
   }
 
-  raw_rand(): ArrayBuffer {
+  raw_rand(): Uint8Array {
     const view = new Uint8Array(32)
     crypto.webcrypto.getRandomValues(view)
 
-    const result = IDL.encode([IDL.Vec(IDL.Nat8)], [view])
-    return result
+    // const result = IDL.encode([IDL.Vec(IDL.Nat8)], [view])
+    // return result
+
+    return view
   }
 
   // create_canister(msg: Message, args: CreateCanisterArgs | null): CanisterCreateResult {

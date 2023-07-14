@@ -115,7 +115,7 @@ export class MockAgent implements Agent {
     if (msg.status === CallStatus.Ok && msg.result !== undefined) {
       return msg.result
     } else if (msg.status === CallStatus.Error) {
-      throw new Error('Error while processing message, ' + msg.rejectionCode);
+      throw new Error('Error while processing message, ' + msg.rejectionCode+ ' ' + msg.rejectionMessage);
     }
 
     throw new Error('Message was not fully processed!')

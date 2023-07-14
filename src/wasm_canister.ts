@@ -4,9 +4,10 @@ import { buildIdl, type IdlResult } from './idl_builder'
 import { CallStatus, CallType, Message, RejectionCode } from './call_context'
 import { type ReplicaContext } from './replica_context'
 import { parse_candid } from './wasm_tools/pkg/wasm_tools'
-import { Canister } from './canister'
+import { Canister, WasmModule } from './canister'
 import debug from 'debug'
 import { Ic0 } from './ic0'
+import { hexToBytes } from './utils'
 
 const log = debug('lightic:canister')
 
@@ -56,7 +57,8 @@ export class WasmCanister implements Canister {
 
   readonly created: bigint
 
-  private module?: WebAssembly.Module
+  private module?: WasmModule
+
   private instance: WebAssembly.Instance
 
   private candid: any
@@ -77,15 +79,19 @@ export class WasmCanister implements Canister {
     })
   }
 
-  async install_module(code: WebAssembly.Module, initArgs: ArrayBuffer, sender: Principal) {
+  get_module_hash(): Buffer | undefined {
+    return this.module !== undefined ?  Buffer.from(hexToBytes(this.module.hash)) : undefined
+  }
+
+  async install_module(code: WasmModule, initArgs: ArrayBuffer, sender: Principal) {
     this.module = code
 
-    const imports = WebAssembly.Module.imports(code)
+    const imports = WebAssembly.Module.imports(code.module)
     const importObject = this.ic0.getImports(this.state, imports.map(x => x.name))
 
     if (this.module === undefined) return
 
-    this.instance = await WebAssembly.instantiate(this.module, importObject)
+    this.instance = await WebAssembly.instantiate(this.module.module, importObject)
     this.state.memory = this.instance.exports.memory as WebAssembly.Memory ?? this.instance.exports.mem as WebAssembly.Memory
 
     if (initArgs !== undefined && initArgs !== null && initArgs.byteLength > 0 && this.instance.exports['canister_init'] !== undefined) {
@@ -95,15 +101,15 @@ export class WasmCanister implements Canister {
     }
   }
 
-  async install_module_candid(code: WebAssembly.Module, initArgs: any, sender: Principal, candidSpec?: string) {
-    this.module = code
+  async install_module_candid(module: WasmModule, initArgs: any, sender: Principal, candidSpec?: string) {
+    this.module = module
 
-    const imports = WebAssembly.Module.imports(code)
+    const imports = WebAssembly.Module.imports(module.module)
     const importObject = this.ic0.getImports(this.state, imports.map(x => x.name))
 
     if (this.module === undefined) return
 
-    this.instance = await WebAssembly.instantiate(this.module, importObject)
+    this.instance = await WebAssembly.instantiate(this.module.module, importObject)
     this.state.memory = this.instance.exports.memory as WebAssembly.Memory ?? this.instance.exports.mem as WebAssembly.Memory
 
     if (candidSpec === undefined) {

@@ -5,7 +5,7 @@ import debug from 'debug'
 import { CallSource, CallStatus, CallType, Message, RejectionCode } from './call_context'
 import { u64IntoCanisterId } from './utils'
 import { ManagementCanister } from './management_canister'
-import { Canister } from './canister'
+import { Canister, WasmModule } from './canister'
 const log = debug('lightic:replica')
 
 export interface InstallCanisterArgs {
@@ -131,6 +131,15 @@ export class ReplicaContext {
     return Object.values(this.canisters)
   }
 
+  get_module_hash(canisterId: Principal): Buffer | undefined {
+    const canister = this.get_canister(canisterId);
+    if (canister === undefined) {
+      return undefined;
+    }
+
+    return canister.get_module_hash();
+  }
+
   get_canister_id(): Principal {
     const id = u64IntoCanisterId(this.last_id)
     this.last_id += 1n
@@ -165,7 +174,7 @@ export class ReplicaContext {
 
   // Installs code as a canister in replica, assigns ID in similar fashion as replica
   async install_canister(
-    code: WebAssembly.Module,
+    code: WasmModule,
     params: InstallCanisterArgs
   ): Promise<Canister> {
     let idPrin: Principal | undefined

@@ -11,6 +11,7 @@ Both tools are aimed at developers. To help them efficiently develop, test and d
 
 The replica mock is run directly in node.js environment (also works with all browsers that support WASM) and enables you to deploy and test and wasm file that is compatible with Internet Computer reference
 
+It can also be used as a local development replica (started by dfx start) replacement
 
 # How to start using
 
@@ -39,13 +40,58 @@ cd spec_test
 cargo build --release --target wasm32-unknown-unknown
 ```
 
+
+# How to
+
+## How to view and debug inter-canister calls
+## How to debug canister traps
+
+## How to deploy Ledger canister in one step
+
+## How to setup NNS
+
+## How to unit test your canisters
+
+
+
+
 # Examples
 ## Load canister and run actions against it
-## Test update calls
-## Test inter-canister calls
+
+```
+    context = new TestContext();
+    let canister = context.deploy("target/wasm32-unknown-unknown/release/evm_utils.wasm")
+    let actor = context.getAgent(Principal.anonymous()).getActor(canister);
+
+    let result = await actor.hello();
+```
+
+
+## Load ledger canister
+
+This snipped will download latest deployed version of ledger canister and deploy it to light ic
+
+```
+    const mintingPrincipal = Principal.fromText(principal)
+    const invokingPrincipal = Principal.fromText(principal)
+
+    const canister = await LedgerHelper.defaults(context, mintingPrincipal, invokingPrincipal)
+
+
+    const actor = context.getAgent(Principal.anonymous()).getActor(canister.ledger)
+
+    const result = await actor.account_balance({ account: invokingAccount.toUint8Array() }) as any
+```
+
+For complete example see `test/ledger.spec.ts`
+
+## DFX Replica Replacement
+
+```
+    npx lightic --p port
+```
 
 # What is Implemented
-
 
 ## IC0 Implementation
 Below is a list of IC0 functions exposed to WASM module on IC environment. Not all calls will be implemented as part of this project.

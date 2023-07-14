@@ -1,16 +1,16 @@
 import { type Principal } from '@dfinity/principal'
-import { type TestContext } from './test_context'
+import { type TestContext } from '../test_context'
 import fs from 'fs'
 import https from 'node:https'
 import type http from 'node:http'
 import url from 'url'
 import pako from 'pako'
-import { type WasmCanister } from './wasm_canister'
-import { getAccount } from './utils'
+import { type WasmCanister } from '../wasm_canister'
+import { getAccount } from '../utils'
 
 const latestRelease = 'f02cc38677905e24a9016637fddc697039930808'
 
-class HttpPromise {
+export class HttpPromise {
   async get (url): Promise<Uint8Array> {
     const [, , content] = await this._makeRequest('GET', url, {})
 

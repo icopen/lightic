@@ -8,6 +8,11 @@ export enum CanisterStatus {
   Stopped,
 }
 
+export interface WasmModule {
+  module: WebAssembly.Module,
+  hash: string
+}
+
 export interface Canister {
   // timestamp at which given canister was created
   created: bigint
@@ -18,4 +23,5 @@ export interface Canister {
   
   process_message(msg: Message): Promise<void>;
 
+  get_module_hash(): Buffer | undefined;
 }
