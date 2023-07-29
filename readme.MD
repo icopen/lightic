@@ -88,7 +88,9 @@ const result = await actor.test_caller()
 Replace `test_caller()` with a function from you canister
 
 
+
 ## How to deploy Ledger canister in one step
+
 Lightic comes with builtin `LedgerHelper` that can download and deploy ledger canister. In order to start using ledger:
 
 ```
@@ -108,7 +110,9 @@ Next call account_balance to check if the owner, has some ICP in its account
 
 If you need an account number from your principal there is a helper function `getAccount` the will do just that
 
+
 ## How to unit test your canisters
+
 
 You can find examples of lightic used for testing canisters here: [https://github.com/icopen/evm_utils_ic/blob/master/__tests__/_common.mjs]. More examples to come.
 
@@ -125,7 +129,9 @@ Where port is the desired TCP port on which the lightic should listen.
 
 Most of the project was written in Type Script. 
 
+
 ## Candid Util
+
 Util that can parse Candid compliant data and output it as a JSON formatted string
 
 ```
@@ -133,7 +139,9 @@ cd candid_util
 wasm-pack build --target nodejs
 ```
 
+
 ## Specification test canister
+
 Canister that uses some of the most common features of the IC, used for testing the mock replica
 
 ```
@@ -141,7 +149,9 @@ cd spec_test
 cargo build --release --target wasm32-unknown-unknown
 ```
 
+
 ## Whole Package
+
 ```
 yarn prePublish
 ```
