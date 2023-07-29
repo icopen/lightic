@@ -1,22 +1,23 @@
-import { type Principal } from '@dfinity/principal'
-import { type TestContext } from './test_context'
+import { Principal } from '@dfinity/principal'
+import { type TestContext } from '../test_context'
 import fs from 'fs'
 import https from 'node:https'
 import type http from 'node:http'
 import url from 'url'
 import pako from 'pako'
-import { type WasmCanister } from './wasm_canister'
-import { getAccount } from './utils'
+import { type WasmCanister } from '../wasm_canister'
+import { getAccount } from '../utils'
+import { sha256 } from 'js-sha256'
+import { MockAgent } from '../mock_agent'
 
-const latestRelease = 'f02cc38677905e24a9016637fddc697039930808'
+export const latestRelease = 'f02cc38677905e24a9016637fddc697039930808'
 
-class HttpPromise {
+export class HttpPromise {
   async get (url): Promise<Uint8Array> {
     const [, , content] = await this._makeRequest('GET', url, {})
 
     // if (code === 301) {
     //   response.headers.location
-    //   debugger
     // }
 
     return content
@@ -100,17 +101,43 @@ export class LedgerHelper {
   public minter: Principal
   public owner: Principal
 
-  static async checkAndDownload (): Promise<void> {
+  constructor (ledger: WasmCanister, minter: Principal, owner: Principal) {
+    this.ledger = ledger
+    this.minter = minter
+    this.owner = owner
+  }
+
+  async faucet(target: Principal, amount: number): Promise<void> {
+    // const args = LedgerHelper.getSendArgs(target, amount)
+    // await this.ledger.update('send_dfx', args)
+  }
+
+  async balanceOf(target: Principal): Promise<bigint> {
+    const args = {
+      account: getAccount(target, 0).toUint8Array()
+    }
+
+    const agent = new MockAgent(this.ledger.state.replica, Principal.anonymous())
+    const actor = agent.getActor(this.ledger)
+
+    const result = await actor.account_balance(args) as any
+    return result.e8s
+  }
+
+  static async checkAndDownload (commit: string): Promise<void> {
     if (!fs.existsSync('./cache')) {
       fs.mkdirSync('./cache')
     }
     if (!fs.existsSync('./cache/ledger.wasm')) {
       const prom = new HttpPromise()
 
-      console.log('Downloading latest ledger package, commit: ' + latestRelease)
+      console.log('Downloading latest ledger package, commit: ' + commit)
 
-      const url = 'https://download.dfinity.systems/ic/' + latestRelease + '/canisters/ledger-canister_notify-method.wasm.gz'
+      const url = 'https://download.dfinity.systems/ic/' + commit + '/canisters/ledger-canister_notify-method.wasm.gz'
       const res = await prom.get(url)
+
+      const hash = sha256(res)
+      console.log('Hash: ' + hash);
 
       const inflated = pako.inflate(res)
 
@@ -120,11 +147,11 @@ export class LedgerHelper {
     }
   }
 
-  static getSendArgs (target: Principal, amount: number): any {
+  static getSendArgs (target: Principal, amount: number, memo = 0): any {
     const canisterAccount = getAccount(target, 0)
     const args = {
       amount: { e8s: amount },
-      memo: 0,
+      memo: memo,
       fee: { e8s: 10_000 },
       from_subaccount: [],
       to: canisterAccount.toUint8Array(),
@@ -134,7 +161,7 @@ export class LedgerHelper {
   }
 
   static async defaults (context: TestContext, minter: Principal, owner: Principal): Promise<LedgerHelper> {
-    await LedgerHelper.checkAndDownload()
+    await LedgerHelper.checkAndDownload(latestRelease)
 
     const mintingAccount = getAccount(minter, 0)
     const invokingAccount = getAccount(owner, 0)
@@ -151,14 +178,11 @@ export class LedgerHelper {
         max_message_size_bytes: [],
         icrc1_minting_account: [],
         archive_options: []
-      }]
+      }],
+      id: 'ryjl3-tyaaa-aaaaa-aaaba-cai'
     }) as WasmCanister
 
-    const helper: LedgerHelper = {
-      ledger,
-      minter,
-      owner
-    }
+    const helper: LedgerHelper = new LedgerHelper(ledger, minter, owner);
 
     return helper
   }

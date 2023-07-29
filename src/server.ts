@@ -14,9 +14,11 @@ import { Tree } from './hash_tree';
 import { Bls } from './bls';
 
 import {Command} from 'commander'
+import path from 'path';
 
 const program = new Command();
 program.option('--p, --port <number>','Specifies port on which http server will be started');
+program.option('--c, --clean','Cleans up the DFX state before starting the server');
 program.parse(process.argv);
 
 const options = program.opts();
@@ -27,7 +29,6 @@ const context = new ReplicaContext();
 
 const app = express();
 const port = options.port ?? 8001;
-// const port = 4943;
 
 interface CallContent {
     request_type: string,
@@ -358,6 +359,19 @@ app.post('/api/v2/canister/:canisterId/read_state', (req, res) => {
                     console.log("Unsupported request for status for message with status: " + msg.status)
                 }
             }
+
+            else if (start === 'canister') {
+                const canisterId = Principal.fromUint8Array(path[1])
+                const end = new TextDecoder().decode(path[2])
+
+                if (end === 'module_hash') {
+                    const moduleHash = context.get_module_hash(canisterId)
+
+                    if (moduleHash !== undefined) {
+                        tree.insertValue(path, moduleHash)
+                    }
+                }
+            }
         }
 
         // Every tree will have time entry
@@ -389,6 +403,20 @@ app.get('/api/v2/status', (req, res) => {
 
 async function run() {
     await bls.init()
+
+    if (options.clean) {
+        //remove file if exists ~/.local/share/dfx/network/local/wallets.json
+        const walletPath = path.join('/home/adam', '.local/share/dfx/network/local/wallets.json')
+        if (fs.existsSync(walletPath)) {
+            fs.unlinkSync(walletPath)
+        }
+
+        //delete all file in folder .dfx/local
+        const localPath = path.join('~/', '.dfx/local')
+        if (fs.existsSync(localPath)) {
+            fs.unlinkSync(localPath)
+        }
+    }
 
     app.listen(port, () => {
         console.log(`[server]: Server is running at http://localhost:${port}`);

@@ -19,7 +19,7 @@ export class Tree {
         this.node = {nodes: []}
     }
 
-    insertValue(path: (Buffer | string)[], val: Buffer | string | number | bigint) {
+    insertValue(path: (Buffer | string)[], val: Buffer | string | number | bigint | ArrayBuffer) {
         const node = this.traverseTree(this.node, path)
         
         if (typeof val === 'string') {

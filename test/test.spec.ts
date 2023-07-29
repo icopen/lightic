@@ -1,6 +1,7 @@
 import { Principal } from '@dfinity/principal'
 import { assert } from 'chai'
 import { TestContext, getAccount, LedgerHelper } from '../src'
+import { latestRelease } from '../src/helpers/ledger_helper'
 
 const context = new TestContext()
 
@@ -26,7 +27,7 @@ describe('LightIc', function () {
 
 describe('Ledger Helper', function () {
   it('get wasm', async function () {
-    await LedgerHelper.checkAndDownload()
+    await LedgerHelper.checkAndDownload(latestRelease)
   })
 })
 

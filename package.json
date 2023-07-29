@@ -1,6 +1,6 @@
 {
   "name": "lightic",
-  "version": "0.2.1",
+  "version": "0.3.1",
   "description": "",
   "main": "lib/esm/index.js",
   "bin": "lib/esm/server.js",
@@ -13,7 +13,7 @@
     "build": "tsc --build ./src",
     "buildWasmTools": "cd ./src/wasm_tools && yarn build && cd ../../",
     "buildSpecTest": "cd ./spec_test && cargo build --target wasm32-unknown-unknown --release",
-    "copyWasmTools": "[ -d ./lib/esm/wasm_tools ] || mkdir ./lib/esm/wasm_tools && cp -r ./src/wasm_tools/pkg ./lib/esm/wasm_tools/pkg",
+    "copyWasmTools": "[ -d ./lib/esm/wasm_tools ] || mkdir ./lib/esm/wasm_tools && cp -r ./src/wasm_tools/pkg ./lib/esm/wasm_tools/pkg && rm ./lib/esm/wasm_tools/pkg/.gitignore",
     "prePublish": "yarn buildWasmTools && yarn build && yarn copyWasmTools"
   },
   "author": "",
@@ -34,19 +34,28 @@
     "mocha": "^10.2.0",
     "prettier": "^2.8.4",
     "ts-node": "^10.9.1",
-    "typescript": "^5.0.4"
-  },
-  "dependencies": {
+    "typescript": "^5.0.4",
     "@dfinity/agent": "^0.15.4",
     "@dfinity/candid": "^0.15.3",
     "@dfinity/nns": "^0.14.0",
     "@dfinity/principal": "^0.15.3",
-    "@dfinity/utils": "^0.0.12",
+    "@dfinity/utils": "^0.0.12"
+  },
+  "peerDependencies": {
+    "@dfinity/agent": "^0.15.4",
+    "@dfinity/candid": "^0.15.3",
+    "@dfinity/nns": "^0.14.0",
+    "@dfinity/principal": "^0.15.3",
+    "@dfinity/utils": "^0.0.12"
+  },
+  "dependencies": {
     "cbor": "^8.1.0",
     "commander": "^10.0.1",
     "debug": "^4.3.4",
     "express": "^4.18.2",
-    "pako": "^2.1.0"
+    "pako": "^2.1.0",
+    "js-sha256": "0.9.0",
+    "axios": "^0.24.0"
   },
   "files": [
     "lib/esm",

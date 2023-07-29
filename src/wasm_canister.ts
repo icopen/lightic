@@ -1,12 +1,13 @@
 import { IDL } from '@dfinity/candid'
 import { Principal } from '@dfinity/principal'
 import { buildIdl, type IdlResult } from './idl_builder'
-import { CallStatus, CallType, Message, RejectionCode } from './call_context'
+import { CallSource, CallStatus, CallType, Message, RejectionCode } from './call_context'
 import { type ReplicaContext } from './replica_context'
 import { parse_candid } from './wasm_tools/pkg/wasm_tools'
-import { Canister } from './canister'
+import { Canister, WasmModule } from './canister'
 import debug from 'debug'
 import { Ic0 } from './ic0'
+import { hexToBytes } from './utils'
 
 const log = debug('lightic:canister')
 
@@ -56,11 +57,14 @@ export class WasmCanister implements Canister {
 
   readonly created: bigint
 
-  private module?: WebAssembly.Module
+  private module?: WasmModule
+
   private instance: WebAssembly.Instance
 
   private candid: any
   private idl: IdlResult
+
+  private methods: Record<string, any>
 
   readonly state: CanisterState
   readonly ic0: Ic0
@@ -75,19 +79,39 @@ export class WasmCanister implements Canister {
       replica: replica,
       cycles: 1_000_000_000_000n
     })
+    this.methods = {}
   }
 
-  async install_module(code: WebAssembly.Module, initArgs: ArrayBuffer, sender: Principal) {
+  get_module_hash(): Buffer | undefined {
+    return this.module !== undefined ?  Buffer.from(hexToBytes(this.module.hash)) : undefined
+  }
+
+  async install_module(code: WasmModule) {
     this.module = code
 
-    const imports = WebAssembly.Module.imports(code)
+    const imports = WebAssembly.Module.imports(code.module)
     const importObject = this.ic0.getImports(this.state, imports.map(x => x.name))
 
     if (this.module === undefined) return
 
-    this.instance = await WebAssembly.instantiate(this.module, importObject)
+    this.instance = await WebAssembly.instantiate(this.module.module, importObject)
     this.state.memory = this.instance.exports.memory as WebAssembly.Memory ?? this.instance.exports.mem as WebAssembly.Memory
 
+    for (const obj of Object.keys(this.instance.exports)) {
+      if (obj.startsWith('canister_')) {
+        const [type, name] = obj.split(' ')
+        if (name === undefined) continue;
+        this.methods[name] = {
+          type: type,
+          name: name,
+          func: this.instance.exports[obj]
+        }
+      }
+    }
+  }
+
+  async initialize(initArgs: ArrayBuffer, sender: Principal) {
+    //todo: add warning if canister_init is exported, and there are no initArgs
     if (initArgs !== undefined && initArgs !== null && initArgs.byteLength > 0 && this.instance.exports['canister_init'] !== undefined) {
       // Initialize canister
       const msg = Message.init(this.id, sender, initArgs)
@@ -95,16 +119,18 @@ export class WasmCanister implements Canister {
     }
   }
 
-  async install_module_candid(code: WebAssembly.Module, initArgs: any, sender: Principal, candidSpec?: string) {
-    this.module = code
+  async install_module_candid(module: WasmModule, initArgs: any, sender: Principal, candidSpec?: string) {
+    // this.module = module
 
-    const imports = WebAssembly.Module.imports(code)
-    const importObject = this.ic0.getImports(this.state, imports.map(x => x.name))
+    // const imports = WebAssembly.Module.imports(module.module)
+    // const importObject = this.ic0.getImports(this.state, imports.map(x => x.name))
 
-    if (this.module === undefined) return
+    // if (this.module === undefined) return
 
-    this.instance = await WebAssembly.instantiate(this.module, importObject)
-    this.state.memory = this.instance.exports.memory as WebAssembly.Memory ?? this.instance.exports.mem as WebAssembly.Memory
+    // this.instance = await WebAssembly.instantiate(this.module.module, importObject)
+    // this.state.memory = this.instance.exports.memory as WebAssembly.Memory ?? this.instance.exports.mem as WebAssembly.Memory
+
+    await this.install_module(module);
 
     if (candidSpec === undefined) {
       candidSpec = await this.get_candid()
@@ -115,13 +141,18 @@ export class WasmCanister implements Canister {
     this.candid = candid
     this.idl = buildIdl(IDL, candid)
 
-    if (this.idl.init_args !== undefined && this.idl.init_args !== null && this.idl.init_args.length > 0 && this.instance.exports['canister_init'] !== undefined) {
-      const args = IDL.encode(this.idl.init_args, initArgs)
-
-      // Initialize canister
-      const msg = Message.init(this.id, sender, args)
-      await this.process_message(msg)
+    if (this.idl.init_args !== undefined && this.idl.init_args !== null && this.idl.init_args.length > 0) {
+      initArgs = IDL.encode(this.idl.init_args, initArgs)
     }
+
+    this.initialize(initArgs, sender)
+    // if (this.idl.init_args !== undefined && this.idl.init_args !== null && this.idl.init_args.length > 0 && this.instance.exports['canister_init'] !== undefined) {
+    //   const args = IDL.encode(this.idl.init_args, initArgs)
+
+    //   // Initialize canister
+    //   const msg = Message.init(this.id, sender, args)
+    //   await this.process_message(msg)
+    // }
   }
 
   get_id(): Principal {
@@ -187,7 +218,13 @@ export class WasmCanister implements Canister {
       }
     } else {
       const method = msg.getMethodName()
-      const func = this.instance.exports[method] as any
+      let func = this.instance.exports[method] as any
+
+      if (msg.source === CallSource.InterCanister) {
+        if (func === undefined) {
+          func = this.methods[method]?.func;
+        }
+      }
 
       // Check if function was found in wasm, this should be 4 Canister Reject
       if (func === undefined) {

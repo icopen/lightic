@@ -23,11 +23,8 @@ export function getGlobalTestContext(): TestContext {
 export class TestContext {
   replica: ReplicaContext
 
-  compiled: Record<string, WebAssembly.Module>
-
   constructor () {
     this.replica = new ReplicaContext()
-    this.compiled = {}
   }
 
   clean (): void {
@@ -41,18 +38,13 @@ export class TestContext {
   }
 
   async deploy (filename: string, opts?: DeployOptions): Promise<Canister> {
-    let module = this.compiled[filename]
-
     if (opts?.candid !== undefined) {
       if (fs.existsSync(opts.candid)) {
         opts.candid = fs.readFileSync(opts.candid).toString()
       }
     }
 
-    if (module === undefined) {
-      module = await loadWasmFromFile(filename)
-      this.compiled[filename] = module
-    }
+    const module = await loadWasmFromFile(filename)
 
     const result = await this.replica.install_canister(module, {
       initArgs: opts?.initArgs, 

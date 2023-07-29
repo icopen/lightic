@@ -139,7 +139,7 @@ export class Ic0 {
             cntx.message.rejectionCode = RejectionCode.CanisterReject
 
             const view = new Uint8Array(cntx.memory.buffer, src, size)
-            cntx.reply_buffer.set(view, size)
+            cntx.reply_buffer.set(view, 0)
             const msg = cntx.reply_buffer.subarray(0, size)
 
             cntx.message.rejectionMessage = msg
@@ -171,7 +171,6 @@ export class Ic0 {
         rejectFun: number,
         rejectEnv: number): void {
         const msg = new Message({
-            type: CallType.Update,
             source: CallSource.InterCanister
         })
 

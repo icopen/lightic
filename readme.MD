@@ -11,13 +11,115 @@ Both tools are aimed at developers. To help them efficiently develop, test and d
 
 The replica mock is run directly in node.js environment (also works with all browsers that support WASM) and enables you to deploy and test and wasm file that is compatible with Internet Computer reference
 
+It can also be used as a local development replica (started by dfx start) replacement
 
-# How to start using
+# How to start using, examples
 
 ```
 npm i lightic
 ```
 
+First you need to choose the js testing framework of your preference, it could be: mocha, jest, vitest or any other.
+
+For the mocha, you can check the examples in the folder tests
+
+## Mocha tests setup
+
+```
+npm i     @types/mocha @types/node typescript mocha chai ts-node
+```
+
+And create .mochars.json with content
+
+```JSON
+// This config file contains Mocha's defaults.
+// This same configuration could be provided in the `mocha` property of your
+// project's `package.json`.
+{
+    "diff": true,
+    "extension": ["js", "cjs", "mjs", "ts"],
+    "package": "./package.json",
+    "reporter": "spec",
+    "slow": "75",
+    "timeout": "2000",
+    "ui": "bdd",
+    "watch-files": ["lib/**/*.js", "test/**/*.ts"],
+    "watch-ignore": ["lib/vendor"],
+    "loader": "ts-node/esm"
+  }
+```
+
+## Simple test
+
+In order to actually test your canister, you need to add to your test file
+
+```TS
+import { TestContext, u64IntoPrincipalId } from 'lightic'
+
+const context = new TestContext()
+This will create a context to run tests, it is a harness that gives you a possibility to install and run canisters
+
+const canister = await context.deploy('./dfx/local/canisters/example/example.wasm')
+const caller = u64IntoPrincipalId(0n)
+const actor = Actor.createActor(canister.getIdlBuilder(), {
+  agent: context.getAgent(caller),
+  canisterId: canister.get_id()
+})
+
+```
+
+1. As you can see this works with a wasm file, so you need to first compile the project using dfx.
+```
+dfx canister build $CANISTER_NAME
+```
+
+In the future the test harness will also take care of compilation.
+
+2. You also need to specify the identity principle (who is calling the canisters) and create an actor. There is a helper function `u64IntoPrincipalId` that creates a Principle based on supplied number, so you do not need to come up with fake principals. The created principal is not random.
+
+3. Then you get an actor, which is the same type as regular dfinity actor. In this example the actual actor class from @dfinity package is used
+
+4. In order to call canister:
+
+```TS
+const result = await actor.test_caller()
+```
+
+Replace `test_caller()` with a function from you canister
+
+
+## How to deploy Ledger canister in one step
+Lightic comes with builtin `LedgerHelper` that can download and deploy ledger canister. In order to start using ledger:
+
+```
+  const minter = u64IntoPrincipalId(0n);
+  const owner = u64IntoPrincipalId(1n);
+  const ledgerCanister = await LedgerHelper.defaults(context, minter, owner)
+```
+
+Now you can call ledger both from agent and from other deployed canisters. If possible this will deploy ledger with the same principal as it is found in IC `ryjl3-tyaaa-aaaaa-aaaba-cai`
+
+
+Next call account_balance to check if the owner, has some ICP in its account
+
+```
+  const balance = await ledgerCanister.balanceOf(minter)
+```
+
+If you need an account number from your principal there is a helper function `getAccount` the will do just that
+
+## How to unit test your canisters
+
+You can find examples of lightic used for testing canisters here: [https://github.com/icopen/evm_utils_ic/blob/master/__tests__/_common.mjs]. More examples to come.
+
+## HTTP Replica Endpoint
+It is possible to launch lightic in a standalone mode and call it from DFX or any other script that can work with DFX or mainnet. In order to do so:
+
+```
+    npx lightic --p port
+```
+
+Where port is the desired TCP port on which the lightic should listen.
 
 # Building
 
@@ -39,13 +141,13 @@ cd spec_test
 cargo build --release --target wasm32-unknown-unknown
 ```
 
-# Examples
-## Load canister and run actions against it
-## Test update calls
-## Test inter-canister calls
+## Whole Package
+```
+yarn prePublish
+```
+
 
 # What is Implemented
-
 
 ## IC0 Implementation
 Below is a list of IC0 functions exposed to WASM module on IC environment. Not all calls will be implemented as part of this project.
