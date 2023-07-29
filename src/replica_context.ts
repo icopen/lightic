@@ -48,8 +48,7 @@ export class ReplicaContext {
     if (canister !== undefined) {
       await canister.process_message(msg)
 
-      // Process any waiting messages, before returning, ie all inter-canister calls
-      await this.process_messages()
+
     } else {
       msg.status = CallStatus.Error
       msg.rejectionCode = RejectionCode.DestinationInvalid
@@ -81,10 +80,10 @@ export class ReplicaContext {
       const msg = Object.values(this.messages).filter((x) => x.status === CallStatus.New)[0]
       await this.process_message(msg)
 
-      if (msg.source === CallSource.InterCanister && msg.type === CallType.Update) {
+      if (msg.source === CallSource.InterCanister) {
         if (msg.status === CallStatus.Ok) {
           const reply: Message = new Message({
-            source: CallSource.InterCanister,
+            source: CallSource.Internal,
             type: CallType.ReplyCallback,
 
             target: Principal.fromText(msg.sender.toString()),

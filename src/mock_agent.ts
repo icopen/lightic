@@ -1,4 +1,4 @@
-import { type JsonObject } from '@dfinity/candid'
+import { type JsonObject, IDL } from '@dfinity/candid'
 import { Principal } from '@dfinity/principal'
 
 import {
@@ -115,7 +115,9 @@ export class MockAgent implements Agent {
     if (msg.status === CallStatus.Ok && msg.result !== undefined) {
       return msg.result
     } else if (msg.status === CallStatus.Error) {
-      throw new Error('Error while processing message, ' + msg.rejectionCode+ ' ' + msg.rejectionMessage);
+      const rejectionMessage = new TextDecoder().decode(msg.rejectionMessage as Uint8Array)
+
+      throw new Error('Error while processing message, code:' + msg.rejectionCode+ ', text: '+rejectionMessage);
     }
 
     throw new Error('Message was not fully processed!')

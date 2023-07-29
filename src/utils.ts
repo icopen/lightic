@@ -14,6 +14,15 @@ export function canisterIdIntoU64 (canisterId: Principal): bigint {
   return num
 }
 
+export function u64IntoPrincipalId (num: bigint): Principal {
+  const bytes = new Uint8Array(29) 
+  
+  bytes[0] = Number(num)
+  bytes[28] = 2
+  
+  return Principal.fromUint8Array(bytes)
+}
+
 export function u64IntoCanisterId (num: bigint): Principal {
   const bytes = new Uint8Array(10)
 

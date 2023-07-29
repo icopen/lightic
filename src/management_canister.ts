@@ -191,7 +191,8 @@ export class ManagementCanister implements Canister {
     if (canister !== undefined) {
       const module = await loadWasm(Buffer.from(arg.wasm_module))
 
-      await canister.install_module(module, arg.arg, msg.sender ?? Principal.anonymous())
+      await canister.install_module(module)
+      await canister.initialize(arg.arg, msg.sender ?? Principal.anonymous())
     } else {
       throw new Error('Canister not found')
     }
